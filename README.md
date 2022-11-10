@@ -1,11 +1,12 @@
 # topoPhonon
-topoPhonon package is a python package that allows users to calculate topological properties, by building phonon tight-binding model.
+#### topoPhonon package is a python package that allows users to calculate topological properties, by building phonon tight-binding model.
 * Build tight-binding models from user's input or phonopy FORCE_CONSTANTS files.  
 * Calculate berry phase, berry curvature, wannier charge center evolution from tight-binding model.  
 * Build slab/ribbon models for surface/edge.  
 * plot 3d band surfaces.   
 
-Basic usage:  
+## Basic usage:  
+
 Use one line of code to build tight-binding model:  
 `model = read_from_files(path)`  
 where the path should contain POSCAR, SPOSCAR and FORCE_CONSTANTS files.   
