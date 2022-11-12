@@ -21,7 +21,7 @@ class Model(object):
     PATTERN = "(-?\d+\.?\d+)\s*(-?\d+\.?\d+)\s*(-?\d+\.?\d+).*"
     TOL = 10**(-5)
     
-    def __init__(self, structure):        
+    def __init__(self, structure, dm=None):        
         """
         Parameters
         ----------
@@ -29,16 +29,25 @@ class Model(object):
         a Structure object
         """
         
-        self.structure = structure    
-        self.dim = self.structure.dim
-        self.fc = []    
-        #initialize the container for unique pairs of atoms
-        self.unique_pair = set()       
+        self.structure = structure 
+        if dm is not None:
+            # interface for Phonopy package
+            assert dm is not None, "Phonopy object must be specified"
+            self.ph_dm = dm
+            self.dim = 3
+            self._read_from_phonopy = True
+        else:
+            # Start from Structure
+            self.dim = self.structure.dim
+            self.fc = []    
+            #initialize the container for unique pairs of atoms
+            self.unique_pair = set()   
+            self._read_from_phonopy = False
+
         #initialize the unit
         self.unit = 1      
         # initialize the finite direction
         self.fin_dirc = []
-        
         self.bottom_del = set()
         self.top_del = set()
             
@@ -309,34 +318,41 @@ class Model(object):
         return r
     
     
-    def _make_dynamical_matrix(self, q):
+    def _make_dynamical_matrix(self, k, k_direction=None):
         """
         convert the input force constants to dynamical matrix;
         K-point should be given in reduced coordinates
         """
 
-        #the size of the dynamical matrix is the (# of atoms in a unit cell) * (dim)
-        dim = self.dim
-        num_del = len(self.bottom_del) + len(self.top_del)
-        num_atom = len(self.structure.masses) - num_del
-        dy_mt = np.zeros((num_atom*dim,
-                          num_atom*dim), 
-                          dtype=complex)
-        
-        for index_I, index_J, lattice_vec, vec_int, fc in self.fc:
-            mass = np.sqrt(self.structure.masses[index_I] *\
-                           self.structure.masses[index_J])
-            #find the positions in the matrix after cutting edge/surface atoms
-            index_I = self._assign_new_index(index_I)  
-            index_J = self._assign_new_index(index_J)
-            # consider the directions that are periodic
-            # per = [i for i in range(dim) if i not in self.fin_dirc]
-            # phase_factor = np.exp(2j * np.pi * np.vdot(q, lat_per))
-            phase_factor = np.exp(2j * np.pi * np.vdot(q, lattice_vec))
-            row, col = (index_I)*dim, (index_J)*dim
-            dy_mt[row:row+dim, col:col+dim] += phase_factor * fc / mass 
-        # make dynamical matrix hermitian
-        dy_mt = (dy_mt + dy_mt.conj().transpose()) / 2           
+        if self._read_from_phonopy:
+            if k_direction is None:
+                self.ph_dm.run(np.array(k))
+            else:
+                self.ph_dm.run(np.array(k), k_direction)
+            dy_mt = self.ph_dm.get_dynamical_matrix()
+        else:
+            #the size of the dynamical matrix is the (# of atoms in a unit cell) * (dim)
+            dim = self.dim
+            num_del = len(self.bottom_del) + len(self.top_del)
+            num_atom = len(self.structure.masses) - num_del
+            dy_mt = np.zeros((num_atom*dim,
+                              num_atom*dim), 
+                              dtype=complex)
+            
+            for index_I, index_J, lattice_vec, vec_int, fc in self.fc:
+                mass = np.sqrt(self.structure.masses[index_I] *\
+                               self.structure.masses[index_J])
+                #find the positions in the matrix after cutting edge/surface atoms
+                index_I = self._assign_new_index(index_I)  
+                index_J = self._assign_new_index(index_J)
+                # consider the directions that are periodic
+                # per = [i for i in range(dim) if i not in self.fin_dirc]
+                # phase_factor = np.exp(2j * np.pi * np.vdot(q, lat_per))
+                phase_factor = np.exp(2j * np.pi * np.vdot(k, lattice_vec))
+                row, col = (index_I)*dim, (index_J)*dim
+                dy_mt[row:row+dim, col:col+dim] += phase_factor * fc / mass 
+            # make dynamical matrix hermitian
+            dy_mt = (dy_mt + dy_mt.conj().transpose()) / 2           
         return dy_mt
 
  
@@ -406,6 +422,7 @@ class Model(object):
     
     def solve_dynamical_matrix_kpath(self,
                                      k_path,
+                                     k_direction=None,
                                      k_num=150,
                                      convert_unit=True,
                                      eig_vec=True):
@@ -436,9 +453,11 @@ class Model(object):
 
         k_points, _, _ = self._make_k_path(k_path, k_num)
         all_freqs, all_eig_vecs = [], []
-        for q in k_points:
-            dy_mt = self._make_dynamical_matrix(q)
-
+        for i, k in enumerate(k_points):
+            if self._read_from_phonopy and self.ph_dm.is_nac() and k_direction is None:
+                # setup the direction for nac term
+                k_direction = k_points[i+1] - k_points[i]  
+            dy_mt = self._make_dynamical_matrix(k, k_direction)
             if np.max(dy_mt - dy_mt.T.conj()) > 1.0E-9:
                 raise Exception("dynamical matrix is not hermitian")
             #diagonalize the dynamical matrix
@@ -676,7 +695,10 @@ class Model(object):
         
         fig, ax = plt.subplots()
         #starting point
-        dy_mt = self._make_dynamical_matrix(k_points[0])
+        k_direction = None
+        if self._read_from_phonopy and self.ph_dm.is_nac():
+            k_direction = k_points[1] - k_points[0]
+        dy_mt = self._make_dynamical_matrix(k_points[0], k_direction)
         eig_vals_2, eig_vecs_2 = np.linalg.eigh(dy_mt)
         self._modify_freq(eig_vals_2)
         y_max_g, y_min_g = max(eig_vals_2), min(eig_vals_2)
@@ -687,7 +709,10 @@ class Model(object):
             frequencies = np.zeros((num_band,2))
             # the previous eigenvals and eigenvectors 
             eig_vals_1, eig_vecs_1 = eig_vals_2, eig_vecs_2
-            dy_mt = self._make_dynamical_matrix(k_points[i])
+            k_direction = None
+            if self._read_from_phonopy and self.ph_dm.is_nac():
+                k_direction = k_points[i] - k_points[i-1]
+            dy_mt = self._make_dynamical_matrix(k_points[i], k_direction)
             eig_vals_2, eig_vecs_2 = np.linalg.eigh(dy_mt)
             # set correct frequencies
             self._modify_freq(eig_vals_2)
@@ -1087,7 +1112,7 @@ if __name__ == "__main__":
     structure = Structure(3)
     structure.read_POSCAR("POSCAR")
     structure.read_supercell("SPOSCAR")
-    model = Model(structure)
+    model = Model(structure=structure)
     model.read_fc("FORCE_CONSTANTS")
     
     node_names=[r"$\Gamma$", "M", "K", r"$\Gamma$", "K'"]
