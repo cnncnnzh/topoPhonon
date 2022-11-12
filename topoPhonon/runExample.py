@@ -16,9 +16,9 @@ print('LiCaAs!!')
 # read files from one line of code
 model = read_from_files(r"..\Examples\LiCaAs")
 # specify the k path 
-q_path = [[0.5,0.5,0.5], [0.5,0.25,0.75], [0.5,0.0,0.5], [0.0,0.0,0.0]]
+k_path = [[0.5,0.5,0.5], [0.5,0.25,0.75], [0.5,0.0,0.5], [0.0,0.0,0.0]]
 # plot the band structure of the tight binding model
-model.atom_projected_band(q_path, node_names=['L', 'W', 'X', 'Gamma'], k_num=80)
+model.atom_projected_band(k_path, node_names=['L', 'W', 'X', "$\Gamma$"], k_num=80)
 
 # build a Topology object
 tp = Topology(model) 
@@ -32,9 +32,9 @@ tp.berry_curvature_proj([2],2,0.722,center=[0.5,0.222],xy_range=0.005,num=5)
 print('BeAu!!')
 model = read_from_files(r"..\Examples\BeAu")
 
-q_path = [[0.0,0.0,0.0], [0.0,0.5,0.0], [0.5,0.5,0.0],[0.0,0.0,0.0], [0.5,0.5,0.5]]
+k_path = [[0.0,0.0,0.0], [0.0,0.5,0.0], [0.5,0.5,0.0],[0.0,0.0,0.0], [0.5,0.5,0.5]]
 # plot atom-projected band
-model.atom_projected_band(q_path, node_names=['Gamma', 'X', 'M', 'Gamma', 'R'],
+model.atom_projected_band(k_path, node_names=["$\Gamma$", 'X', 'M', "$\Gamma$", 'R'],
                           k_num=80,site_comb=[[0,1,2,3],[4,5,6,7]])
 
 tp = Topology(model)
@@ -92,3 +92,42 @@ wfs3 = tp.gen_circle_wfs([0.26,0.52],r=0.01)
 print("berry phase for dirac point1", tp.wilson_loop([0], wfs1,))
 print("berry phase for dirac point2", tp.wilson_loop([4], wfs2,))
 print("berry phase for dirac point3", tp.wilson_loop([4], wfs3,))
+
+
+######## SrTiO3 with NAC ########## 
+print('SrTiO3!!')
+## phonopy setup
+import phonopy
+from phonopy.harmonic.dynamical_matrix import get_dynamical_matrix
+from phonopy.phonon.band_structure import BandStructure
+from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
+
+# create phonopy object
+unitcell = r"..\Examples\SrTiO3\POSCAR"
+supercell = r"..\Examples\SrTiO3\SPOSCAR"
+born = r"..\Examples\SrTiO3\BORN"
+force_const = r"..\Examples\SrTiO3\FORCE_CONSTANTS"
+ph = phonopy.load(supercell_filename=supercell,
+                  born_filename=born,
+                  force_constants_filename=force_const,)
+# create DynamicalMatrix object
+dm = get_dynamical_matrix(ph.force_constants,
+                          ph.supercell,
+                          ph.primitive,
+                          nac_params=ph.nac_params)
+
+## topoPhonon side
+# build a Structure object
+structure = Structure(3)
+structure.read_POSCAR(unitcell)
+structure.read_supercell(supercell)
+# build a model object with Phonopy DynamicalMatrix object
+model = Model(structure, dm=dm)
+k_path = [[0.0,0.0,0.0], [0.0,0.5,0.0], [0.5,0.5,0.0], [0.0,0.0,0.0], [0.5,0.5,0.5]]
+model.atom_projected_band(k_path, node_names=["$\Gamma$", 'X', 'M', "$\Gamma$", 'R'],
+                          site_comb=[[0],[1],[2,3,4]])
+
+
+
+
+
