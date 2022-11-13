@@ -17,6 +17,8 @@ From the model just built, build a slab model with `multi` layers along `fin_dir
 
 Create a Topology object:  
 `tp = Topology(model)`  
+Plot the energy surfaces of `band1` and `band2` and find the degenerate points on z=0 plane:
+`model.plot_3d_band([band1, band2], center, xy_range)`  
 Then plot wannier charge center evolution around `center` for `band_indices`:  
 `tp.wcc_evol_sphere(band_indices, center)`  
 and the berry curvature distribution on $k_i$=`kz` plane, where $k_i$ = $k_z, k_y, k_z$ if `dirc` = 0, 1, 2, respectively:  
