@@ -240,10 +240,3 @@ class Structure():
             raise ValueError("Something goes wrong with {}". format(sposcar))
 
     
-# if __name__ == "__main__":   
-#     structure = Structure(3)
-#     structure.read_POSCAR("POSCAR")
-#     structure.read_supercell("SPOSCAR")
-    # structure.set_masses([72.61, 16.0, 87.62, 87.62, 87.62])
-    
-    
