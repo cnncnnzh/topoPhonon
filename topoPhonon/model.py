@@ -6,7 +6,8 @@ This module contains the class that describes the phonon tight binding model
 from structure import Structure
 import numpy as np
 import matplotlib.pyplot as plt
-# from cmath import sqrt as csqrt
+from units import VASP2THZ, masses_dict
+
 import os
 import re
 import copy
@@ -17,7 +18,6 @@ from scipy.ndimage import gaussian_filter1d
 
 class Model(object):
     
-    VASP2THZ = 15.633302
     PATTERN = "(-?\d+\.?\d+)\s*(-?\d+\.?\d+)\s*(-?\d+\.?\d+).*"
     TOL = 10**(-5)
     
@@ -30,22 +30,22 @@ class Model(object):
         """
         
         self.structure = structure 
+        self.VASPcal = False
         if dm is not None:
             # interface for Phonopy package
             assert dm is not None, "Phonopy object must be specified"
             self.ph_dm = dm
             self.dim = 3
+            self.VASPcal = True
             self._read_from_phonopy = True
         else:
-            # Start from Structure
+            # Start from reading files
             self.dim = self.structure.dim
             self.fc = []    
             #initialize the container for unique pairs of atoms
             self.unique_pair = set()   
             self._read_from_phonopy = False
-
-        #initialize the unit
-        self.unit = 1      
+   
         # initialize the finite direction
         self.fin_dirc = []
         self.bottom_del = set()
@@ -164,40 +164,6 @@ class Model(object):
         dist_rel_to_prm = cart_1 - np.dot(lat_disp_2, self.structure.lat)
         _, lat_disp = self._atom_index(cart=dist_rel_to_prm)
         return i_1, i_2, lat_disp
-        
-    
-    # def _shortest_disp(self, index_super_1, index_super_2):
-    #     """
-    #     find the nearest lattice displacement between a pair of atoms in the supercell,
-    #     also find the multiplication. In this gauge the lattice displacements
-    #     are integers
-    #     """     
-    #     cart_1 = self.structure.super_cart[index_super_1]
-    #     cart_2 = self.structure.super_cart[index_super_2]
-    #     min_dist = float('inf')
-    #     min_vec = []
-
-    #     for i in [1,0,-1]:
-    #         for j in [1,0,-1]:
-    #             for k in [1,0,-1]:
-    #                 cart_translation = np.dot(np.array([i,j,k]),
-    #                                           self.structure.super_lat)
-    #                 cart_2_trans = cart_2 + cart_translation 
-    #                 diff = cart_2_trans - cart_1
-    #                 dist = np.linalg.norm(diff)
-    #                 # lat_disp = np.dot(diff, np.linalg.inv(self.structure.lat))
-    #                 i_1, i_2, lat_disp = self._coord_to_prm_vec(cart_1,
-    #                                                             cart_2_trans)
-    #                 #if the distance equals to the minimum, store it 
-    #                 if abs(min_dist - dist) < Model.TOL:
-    #                     min_vec.append(lat_disp)
-    #                 #if the distance is smaller than the minimum, build a new container
-    #                 elif dist < min_dist:
-    #                     min_dist = dist
-    #                     min_vec = [lat_disp]
-    #     multi = len(min_vec)
-
-    #     return np.array(min_vec), multi
     
     
     def _shortest_disp_gauge_2(self, index_super_1, index_super_2):
@@ -248,8 +214,7 @@ class Model(object):
         """    
         # in the iteration, find which unit cell an atom belongs to, as well
         # as its relative coord
-        
-        self.unit = Model.VASP2THZ
+        self.VASPcal = True
         
         #start reading force constants
         
@@ -424,7 +389,7 @@ class Model(object):
                                      k_path,
                                      k_direction=None,
                                      k_num=150,
-                                     convert_unit=True,
+                                     unit=1,
                                      eig_vec=True):
         """
         convert the input force constants to dynamical matrix on the given k path
@@ -469,11 +434,8 @@ class Model(object):
                     if eig_val >= 0:    
                         freqs[i] = np.sqrt(eig_val)
                     else:
-                        freqs[i] = -np.sqrt(-eig_val)
-                if convert_unit:    
-                    all_freqs.append(freqs*self.unit)
-                else:
-                    all_freqs.append(freqs)
+                        freqs[i] = -np.sqrt(-eig_val)   
+                all_freqs.append(freqs*unit)
                 all_eig_vecs.append(eig_vec) 
                 return dy_mt, all_freqs, all_eig_vecs  
             else:
@@ -484,11 +446,8 @@ class Model(object):
                     if eig_val >= 0:    
                         freqs[i] = np.sqrt(eig_val)
                     else:
-                        freqs[i] = -np.sqrt(-eig_val)
-                if convert_unit:    
-                    all_freqs.append(freqs*self.unit)
-                else:
-                    all_freqs.append(freqs)  
+                        freqs[i] = -np.sqrt(-eig_val)  
+                all_freqs.append(freqs*unit)
                 return dy_mt, all_freqs
     
     
@@ -607,6 +566,33 @@ class Model(object):
         ax.legend(lines, names)
 
 
+    def _convert_unit(self, unit):
+        """
+        Convert the unit if using VASP interface
+
+        """
+        
+        if isinstance(unit, str) and unit.lower() in masses_dict:
+            # if given a string, convert only if using vasp outputs
+            unit_vasp = VASP2THZ * masses_dict[unit.lower()]
+            return unit_vasp if self.VASPcal else 1
+        elif isinstance(unit, int):
+            return unit
+        else:
+            raise Exception("invalid unit specified")
+    
+    
+    def _set_ylabel(self, unit):
+        """
+        determine the ylabel of the plot based on unit specified 
+
+        """
+        
+        if isinstance(unit, str):
+            return "Frequency ({})".format(unit)
+        return "Frequency"
+
+
     def atom_projected_band(self,
                             nodes,
                             site_comb=None,
@@ -615,7 +601,8 @@ class Model(object):
                             y_min=None,
                             y_max=None,
                             margin_highlight=[0.,0.],
-                            fin_dirc=None):
+                            fin_dirc=None,
+                            unit="thz"):
         """
         Make plain or atom-resolved phonon band plot
         
@@ -656,6 +643,9 @@ class Model(object):
         
         print("start plotting the atom_resolved band structures...")
         from matplotlib.collections import LineCollection
+        
+        # convert unit 
+        unit_num = self._convert_unit(unit)
         
         if node_names is not None:
             assert isinstance(node_names, (list, np.ndarray)),\
@@ -718,8 +708,8 @@ class Model(object):
             self._modify_freq(eig_vals_2)
             y_max_g = max(y_max_g, max(eig_vals_2))
             y_min_g = min(y_min_g, min(eig_vals_2))
-            frequencies[:,0] = eig_vals_1*self.unit
-            frequencies[:,1] = eig_vals_2*self.unit           
+            frequencies[:,0] = eig_vals_1*unit_num
+            frequencies[:,1] = eig_vals_2*unit_num           
             # set the weights of each atom groups
             if site_comb is not None:
                 colors = []
@@ -742,14 +732,20 @@ class Model(object):
             else:
                 ls = LineCollection(seg, linestyles='-', linewidths=2.0)
             ax.add_collection(ls) 
+            
+        # set ylim and xlim
         margin = (y_max_g - y_min_g) * 0.05
         if y_max is None:
-            y_max = (y_max_g + margin) * self.unit
+            y_max = (y_max_g + margin) * unit_num
         if y_min is None:
-            y_min = (y_min_g - margin) * self.unit
+            y_min = (y_min_g - margin) * unit_num
         y_range = y_max - y_min
         ax.set_xlim(x_min, x_max)
         ax.set_ylim(y_min, y_max)
+        
+        # set ylabel and xlabel
+        ax.set_ylabel(self._set_ylabel(unit))
+        ax.set_xlabel("Wavevector")
         
         #show high symmetry point
         ax.vlines(node_dist, y_min-y_range*0.05, y_max+y_range*0.05)
@@ -829,7 +825,7 @@ class Model(object):
         structure = self._make_supercell(multi, fin_dirc)
         model = Model(structure) 
         model.org_model = self
-        model.unit = self.unit 
+        model.VASPcal = self.VASPcal
         model.multi = multi
         model.fin_dirc = self.fin_dirc[:] 
         model.fin_dirc.append(fin_dirc)
@@ -875,7 +871,7 @@ class Model(object):
         #change the indexes and the lattice displacements in force constants
     
     
-    def _pixel_band(self, k, edge_atoms, ylim, y_res, sigma):
+    def _pixel_band(self, k, edge_atoms, ylim, y_res, sigma, unit):
         """
         make a series of grids at k whose colors depends on edge_atoms
         """
@@ -887,10 +883,9 @@ class Model(object):
         self._modify_freq(eig_vals)
         for i, freq in enumerate(eig_vals):
             # the index of the square for a given freqency
-            freq *= self.unit
+            freq *= unit
             if freq < ylim[0] or freq > ylim[1]:
-                continue
-            
+                continue   
             # convert the eigenvector of length dim*n to a vector of length n
             eig_vec = eig_vecs[:, i]
             new_vec = np.zeros(nb_atoms)
@@ -900,12 +895,19 @@ class Model(object):
             index = (freq-ylim[0]) // ((ylim[1]-ylim[0])/y_res)
             y_grid[int(index)] += np.dot(new_vec, edge_atoms)
             
-        # # gaussian smeraing
+        # # gaussian smearing
         y_grid = gaussian_filter1d(y_grid, sigma)
         return y_grid
 
 
-    def plot_edge(self, nodes, edge, ylim, k_num=100, fin_dirc=None, sigma=2):
+    def plot_edge(self,
+                  nodes,
+                  edge,
+                  ylim,
+                  k_num=100,
+                  fin_dirc=None,
+                  sigma=2,
+                  unit="thz"):
         """
         plot edge/surface states, smear the bulk bands with gaussian
         
@@ -919,7 +921,8 @@ class Model(object):
             of the primitive cell. For example, edge_highlight=[1,1] will highlight 
             the contribution from the bottom primitive cell and the top primitive cell.
         ylim : list, [float, float]
-            Y range of the plot
+            Y range of the plot; if using vasp outputs, the unit of ylim must match
+            the given unit argument.
         k_num : int, optional
             total number of kpoints in the plot
             The default is 100
@@ -934,6 +937,11 @@ class Model(object):
         
         """
         
+        ylim = np.array(ylim)        
+        # convert unit 
+        unit_num = self._convert_unit(unit)
+        # get ylabel
+        ylabel = self._set_ylabel(unit)
         if self.dim == 2:
             print("start plotting the edge states...")
         elif self.dim == 3:
@@ -965,11 +973,17 @@ class Model(object):
         # at each k, build a fine grids and fill them with numbers according to edge_atoms
         weights = np.zeros((y_res, len(k_points)))
         for i in range(0,len(k_points)):
-            weights[:,i] = self._pixel_band(k_points[i], edge_atoms, ylim, y_res, sigma)        
+            weights[:,i] = self._pixel_band(k_points[i],
+                                            edge_atoms,
+                                            ylim,
+                                            y_res,
+                                            sigma,
+                                            unit_num)        
         y_grid = np.linspace(ylim[0], ylim[1], y_res)
         X, Y = np.meshgrid(k_dist, y_grid)
         fig, ax = plt.subplots()
         ax.pcolormesh(X, Y, weights, cmap='gist_heat')
+        ax.set_ylabel(ylabel)
         plt.show()
     
     
@@ -979,7 +993,7 @@ class Model(object):
         pass
         
     
-    def _sample_2d_band(self, band_index, center, xy_range, dirc, z, k_num):
+    def _sample_2d_band(self, band_index, center, xy_range, dirc, z, k_num, unit):
         """
         compute all wavefunctions on a 2d grid.
         
@@ -1007,7 +1021,7 @@ class Model(object):
                 _, all_freq =\
                     self.solve_dynamical_matrix_kpath([kpt],
                                                       k_num=1,
-                                                      convert_unit=True,
+                                                      unit=unit,
                                                       eig_vec=False)
                 wfs[i,j] = copy.deepcopy(all_freq[0][band_index])
         return X, Y, wfs
@@ -1022,6 +1036,7 @@ class Model(object):
                      k_num=10,
                      tol=0.5,
                      view=None,
+                     unit='thz'
                      ):
 
         """
@@ -1046,7 +1061,8 @@ class Model(object):
             The default is 10
         tol : float, optional
             if the length of band_indexes is two, the k_point where the energy
-            difference is below tol will be dotted
+            difference is below tol will be dotted. In many cases the value of t
+            ol should be increased to see the degenerate points.
             The default is 0.5
         view : list, [float, float], optional
             two numbers that changes the view of the plot; the first number sets
@@ -1054,20 +1070,38 @@ class Model(object):
             number sets the azimuth (degree rotated about z-axis)
             The default is None
         """
+
+        from mpl_toolkits.mplot3d import Axes3D
+        
         # scale the tolerance
         tol *= xy_range / k_num
-        from mpl_toolkits.mplot3d import Axes3D
+        # convert unit 
+        unit_num = self._convert_unit(unit)
+
         
         assert len(band_indexes) in (1,2), "You can specify 1 or 2 bands"
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
+        # get zlabel
+        zlabel = self._set_ylabel(unit)
+        ax.set_zlabel(zlabel)
         
-        X, Y, wfs_1 = self._sample_2d_band(band_indexes[0], center, xy_range,
-                                           z=z, dirc=dirc, k_num=k_num)
+        X, Y, wfs_1 = self._sample_2d_band(band_indexes[0],
+                                           center,
+                                           xy_range,
+                                           z=z,
+                                           dirc=dirc,
+                                           k_num=k_num,
+                                           unit=unit_num)
         ax.plot_surface(X, Y, wfs_1, shade=False, alpha=0.5)
         if len(band_indexes) == 2:
-            X, Y, wfs_2 = self._sample_2d_band(band_indexes[1], center, xy_range,
-                                               z=z, dirc=dirc, k_num=k_num)   
+            X, Y, wfs_2 = self._sample_2d_band(band_indexes[1],
+                                               center,
+                                               xy_range,
+                                               z=z,
+                                               dirc=dirc,
+                                               k_num=k_num,
+                                               unit=unit_num)   
             ax.plot_surface(X, Y, wfs_2, shade=False, alpha=0.5)
             # find degenerate points
             wf_diff = wfs_1 - wfs_2
