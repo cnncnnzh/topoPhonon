@@ -35,7 +35,7 @@ model = read_from_files(r"..\Examples\BeAu")
 k_path = [[0.0,0.0,0.0], [0.0,0.5,0.0], [0.5,0.5,0.0],[0.0,0.0,0.0], [0.5,0.5,0.5]]
 # plot atom-projected band
 model.atom_projected_band(k_path, node_names=["$\Gamma$", 'X', 'M', "$\Gamma$", 'R'],
-                          k_num=80,site_comb=[[0,1,2,3],[4,5,6,7]])
+                          k_num=80,site_comb=[[0,1,2,3],[4,5,6,7]], unit="cm-1")
 
 tp = Topology(model)
 ## wannier center evolution
@@ -59,9 +59,9 @@ model_2d = model.cut_piece(17, 2, bottom_shift=0)
 # plot the surface band structure
 q_path_2d = [[-0.5,0.0], [0.0,-0.5], [0.5,0.0], [0.0,0.0], [0.5,0.5], [0.5,0.0],[0.0,0.5], [-0.5,0.0]]
 model_2d.atom_projected_band(q_path_2d, node_names=['X', 'Y', 'X', "$\Gamma$", 'M', 'X', 'Y', 'X'],
-                              k_num=70, y_min=3.0, y_max=3.8, margin_highlight=[0.45,0])
+                              k_num=70, y_min=100, y_max=126, margin_highlight=[0.45,0], unit="cm-1")
 # plot the gaussian smeared surface band structure
-model_2d.plot_edge(q_path_2d, [1,0], [3.0,3.8], k_num=150, fin_dirc=None)
+model_2d.plot_edge(q_path_2d, [1,0], [100,126], k_num=150, fin_dirc=None, unit="cm-1")
 
 
 ######### graphene ##############
