@@ -46,7 +46,7 @@ class Topology():
         """
         modified_wf = []
         dy_mt, all_freqs, eig_vecs =\
-            self.model.solve_dynamical_matrix_kpath([kpt], k_num=1, convert_unit=False)
+            self.model.solve_dynamical_matrix_kpath([kpt], k_num=1)
         dim = len(all_freqs[0])
         for i in range(dim):
             # convert the row vector to column vector
@@ -303,8 +303,7 @@ class Topology():
         # build a wilson loop adjacent to the point
         d, freqs, eig_vecs =\
             self.model.solve_dynamical_matrix_kpath([kpt],
-                                                    k_num=1,
-                                                    convert_unit=False)  
+                                                    k_num=1)  
         num_deg = len(band_indices)
         num_bands = len(freqs[0])
         f0 = [freqs[0][i] for i in band_indices]
@@ -315,11 +314,9 @@ class Topology():
             kxp = kpt + np.array([delta,0])
             kyp = kpt + np.array([0,delta])
             d_x, _, _ = self.model.solve_dynamical_matrix_kpath([kxp],
-                                                           k_num=1,
-                                                           convert_unit=False)
+                                                           k_num=1,)
             d_y, _, _ = self.model.solve_dynamical_matrix_kpath([kyp],
-                                                           k_num=1,
-                                                           convert_unit=False)
+                                                           k_num=1,)
             delta_x = (d_x - d)/delta
             delta_y = (d_y - d)/delta
             # build the berry curvature matrix B_ij
@@ -353,14 +350,11 @@ class Topology():
             kyp = kpt + np.array([0,delta,0])
             kzp = kpt + np.array([0,0,delta])
             d_x, _, _ = self.model.solve_dynamical_matrix_kpath([kxp],
-                                                           k_num=1,
-                                                           convert_unit=False)
+                                                           k_num=1,)
             d_y, _, _ = self.model.solve_dynamical_matrix_kpath([kyp],
-                                                           k_num=1,
-                                                           convert_unit=False)
+                                                           k_num=1,)
             d_z, _, _ = self.model.solve_dynamical_matrix_kpath([kzp],
-                                                           k_num=1,
-                                                           convert_unit=False)
+                                                           k_num=1,)
             delta_x = (d_x - d)/delta
             delta_y = (d_y - d)/delta
             delta_z = (d_z - d)/delta
@@ -538,8 +532,7 @@ class Topology():
                 kpt = [X[i,j], Y[i,j]]
                 _, _, all_eig_vecs =\
                     self.model.solve_dynamical_matrix_kpath([kpt],
-                                                            k_num=1,
-                                                            convert_unit=True)
+                                                            k_num=1,)
                 wfs[i,j] = copy.deepcopy(all_eig_vecs[0].T)
         return X, Y, wfs
         
