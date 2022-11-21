@@ -25,20 +25,7 @@ class Topology():
         if dim is None:
             self.dim = model.dim
         else:
-            self.dim = dim
-
-    
-    # @staticmethod
-    # def _back_to_bz(kpoint):
-    #     for i in range(len(kpoint)):
-    #         while kpoint[i] < 0 or kpoint[i] >= 1 - 1e-9:
-    #             if kpoint[i] < 0:
-    #                 kpoint[i] += 1
-    #             elif kpoint[i] >= 1:
-    #                 kpoint[i] -= 1
-    #             else:
-    #                 break 
-    
+            self.dim = dim    
 
     def _wfs_at_kpt(self, kpt):
         """
@@ -372,11 +359,11 @@ class Topology():
                         wfm = np.array(eig_vecs[0][:,m])
                         fm = freqs[0][m]
                         if abs(fi - fm) < 1e-15:
-                            warnings.warn("band {} and {} are likely to be degenerate"\
-                                            .format(band_indices[i], m))
+                            warnings.warn("band {} and {} are likely to be degenerate at {}"\
+                                            .format(band_indices[i], m, kpt))
                         if abs(fj - fm) < 1e-15:
-                            warnings.warn("band {} and {} are likely to be degenerate"\
-                                            .format(band_indices[j], m))
+                            warnings.warn("band {} and {} are likely to be degenerate at {}"\
+                                            .format(band_indices[j], m, kpt))
                         prod1, prod2 = np.zeros(3, dtype=complex), np.zeros(3, dtype=complex)
                         prod1[0] = np.dot(wfi.conjugate(),np.dot(delta_x, wfm))
                         prod1[1] = np.dot(wfi.conjugate(),np.dot(delta_y, wfm))
@@ -511,145 +498,3 @@ class Topology():
         # print(u, v)
         plt.quiver(kx+kx0, ky+ky0, u, v, scale_units='xy')    
         plt.title("band {}".format(str(band_indices)))
-    
-    
-    def _build_2d_wfs(self, center, xy_range, k_num=20):
-        
-        """
-        compute eigenvectors on a grid for berry curvature calculations
-        
-        """
-        
-        step = xy_range/k_num/2
-        kx = np.arange(center[0]-xy_range, center[0]+xy_range+step, step)
-        ky = np.arange(center[1]-xy_range, center[1]+xy_range+step, step)
-        X, Y = np.meshgrid(kx, ky)
-        wfs = np.zeros((X.shape[0], X.shape[1], self.nb, self.nb),dtype=complex)
-        
-
-        for i in range(X.shape[0]):
-            for j in range(X.shape[1]):
-                kpt = [X[i,j], Y[i,j]]
-                _, _, all_eig_vecs =\
-                    self.model.solve_dynamical_matrix_kpath([kpt],
-                                                            k_num=1,)
-                wfs[i,j] = copy.deepcopy(all_eig_vecs[0].T)
-        return X, Y, wfs
-        
-    
-    def run_wilson_loop(self, band_indices, wfs=None, kpts=None, ):
-        """
-        compute the berry phase for a set of eigenvectors along a k loop. You can
-        either specify the k path or directly all the wavefunctions
-        
-        Parameters
-        ----------
-        band_indices : list of ints
-            list of band indices on which the berry curvature is calculated.
-        wfs : ndarray of complex, optional
-            an array of eigenvectors around a closed path.
-            The default is None.
-        kpts : list, optional
-            a list of k-point on a closed path; if the wfs is None, kpts
-            must be specified.
-            The default is None
-            
-        Returns
-        -------
-        berry phase calculated with wilson loop method
-        """
-
-        if wfs is not None:
-            if kpts is not None:
-                warnings.warn("wfs specified, kpts is not read")
-            self.wfs = wfs
-            return self.wilson_loop(band_indices, wfs)
-            
-        elif kpts is not None:
-            wfs = []
-            for kpt in kpts:
-                if np.linalg.norm(np.array(kpts[0]) - np.array(kpts[-1])) > 1e-3:
-                    raise Exception("Your kpoints don't form a loop")
-                modified_wf = self._wfs_at_kpt(kpt)
-                wfs.append(modified_wf)
-            self.wfs = wfs
-            return self.wilson_loop(band_indices, np.array(wfs))
-        
-        raise Exception("Please specify eigenvectors or k points")     
-  
-    
-    def _one_flux_plane(self, wfs2d, band_indices):
-        """
-        Compute fluxes on a two-dimensional plane of states.
-        """
-        # size of the mesh
-        nk0=wfs2d.shape[0]
-        nk1=wfs2d.shape[1]
-        # number of bands (will compute flux of all bands taken together)
-        nbnd=wfs2d.shape[2]
-    
-        # here store flux through each plaquette of the mesh
-        all_phases=np.zeros((nk0-1,nk1-1),dtype=float)
-    
-        # go over all plaquettes
-        for i in range(nk0-1):
-            for j in range(nk1-1):
-                # generate a small loop made out of four pieces
-                wf_use=[]
-                wf_use.append(wfs2d[i,j])
-                wf_use.append(wfs2d[i+1,j])
-                wf_use.append(wfs2d[i+1,j+1])
-                wf_use.append(wfs2d[i,j+1])
-                wf_use.append(wfs2d[i,j])
-                wf_use=np.array(wf_use,dtype=complex)
-                # calculate phase around one plaquette
-                all_phases[i,j]=self.run_wilson_loop(band_indices, wfs=wf_use)
-    
-        return all_phases
-        
-    
-    def berry_curvature_2d(self,
-                           band_indices,
-                           center=[0,0],
-                           num=20,
-                           xy_range=0.5):
-        """
-        make a 3d plot of berry curvature for a 2d system, where the z axis 
-        represents the value of berry curvatures. 
-        
-        Parameters
-        ----------
-        band_indices : list of ints
-            list of band indices for which the berry curvature is calculated.
-        center : list, [float, float], optional
-            coordinate of the point around which the berry curvatures are plotted;
-            specify only two component on the plane; the third coordinate is specified by kz. 
-            The default id [0,0]
-        num : int, optional
-            number of points sampled on the plane is given by num * num 
-            The default is 20
-        xy_range : float
-            the range of the grid, i.e., the plot spans [center[0]-xy_range, 
-            center[0]+xy_range] and [center[1]-xy_range, center[1]+xy_range]
-            The default is 0.5
-        """
-        
-        
-        print("start plotting the 2d berry curvature distribution...")
-        from mpl_toolkits.mplot3d import Axes3D
-        self._make_k_grid(xy_range, num)
-        
-        assert self.dim == 2, ("berry_curvature_2d method works for 2d systems only")
-        if isinstance(band_indices, int):
-            band_indices = [band_indices]
-        kx, ky = self._make_k_grid(xy_range, num)
-        kx0, ky0 = center[0], center[1]
-        # container for berry curvatures        
-        z = np.zeros((kx.shape))
-        fig = plt.figure()
-        ax = plt.axes(projection='3d')
-        for i in range(len(kx)):
-            for j in range(len(kx[0])):
-                kpt = np.array([kx0+kx[i][j],ky0+ky[i][j]])
-                z[i][j] = self.berry_curvature(kpt,band_indices)
-                ax.plot_surface(kx+kx0,ky+ky0,z,)
