@@ -5,6 +5,7 @@ This module contains the class that describes the phonon tight binding model
 
 from structure import Structure
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from units import VASP2THZ, masses_dict
 
@@ -14,19 +15,24 @@ import copy
 from tqdm import tqdm
 import functools
 from scipy.ndimage import gaussian_filter1d
-
+from typing import List, Union, Tuple
 
 class Model(object):
     
     PATTERN = "(-?\d+\.?\d+)\s*(-?\d+\.?\d+)\s*(-?\d+\.?\d+).*"
     TOL = 10**(-5)
     
-    def __init__(self, structure, dm=None):        
+    def __init__(self,
+                 structure: Structure,
+                 dm=None):        
         """
         Parameters
         ----------
         structure: Structure
-        a Structure object
+            a Structure object
+        dm: phonopy.harmonic.dynamical_matrix.DynamicalMatrix, optional
+            the DynamicalMatrix object from phonopy API
+            The default is None
         """
         
         self.structure = structure 
@@ -53,7 +59,10 @@ class Model(object):
             
         
     @staticmethod
-    def _convert_pair_to_str(index_prm_1, index_prm_2, lattice_vec):
+    def _convert_pair_to_str(index_prm_1: int,
+                             index_prm_2: int,
+                             lattice_vec: Union[List[int], np.ndarray]
+                             ) -> str:
         """
         hash the atomic a pair by converting the information to a string
         
@@ -64,7 +73,12 @@ class Model(object):
         return temp
     
 
-    def set_fc(self, atom_1, atom_2, lattice_vec, lattice_vec_int, fc, ):
+    def set_fc(self,
+               atom_1: int,
+               atom_2: int,
+               lattice_vec: Union[List[float], np.ndarray],
+               lattice_vec_int: Union[List[int], np.ndarray],
+               fc: Union[List[complex], np.ndarray],):
         """
         set force constants manually
         
@@ -106,7 +120,8 @@ class Model(object):
     
     
     @staticmethod  
-    def _cartesian_to_direct(coord, lat):
+    def _cartesian_to_direct(coord: np.ndarray,
+                             lat: np.ndarray):
         """
         convert a cartesian coordinate to a direct coordinate
 
@@ -114,9 +129,12 @@ class Model(object):
         return np.dot(coord, np.linalg.inv(lat))
         
     
-    def _atom_index(self, cart=None, atom=None):
+    def _atom_index(self,
+                    cart: np.ndarray = None,
+                    atom: Union[int, None] = None
+                    ) -> (int, np.ndarray):
         """
-        calculate the index in the primitive cell of
+        find the index in the primitive cell of
         an atom in the supercell, as well as its lattice translation
         relative to the primitive cell 
         """
@@ -137,7 +155,10 @@ class Model(object):
                         are not related by a diagonal matrix""")
 
     
-    def _pair_to_prm_vec(self, atom_1, atom_2):
+    def _pair_to_prm_vec(self,
+                         atom_1: int,
+                         atom_2: int
+                         ) -> (int, int, np.ndarray): 
         """
         express the vector of a pair in the unit of primitive lattice.
         the atoms are specified by their indexes in the supercell.
@@ -152,7 +173,9 @@ class Model(object):
         return i_1, i_2, lat_disp
         
     
-    def _coord_to_prm_vec(self, cart_1, cart_2):
+    def _coord_to_prm_vec(self,
+                          cart_1: np.ndarray,
+                          cart_2: np.ndarray) -> (int, int, np.ndarray):
         """
         express the vector of a pair in the unit of primitive lattice.
         the atoms are specified by their cartesian coordinate.
@@ -166,7 +189,10 @@ class Model(object):
         return i_1, i_2, lat_disp
     
     
-    def _shortest_disp_gauge_2(self, index_super_1, index_super_2):
+    def _shortest_disp_gauge_2(self,
+                               index_super_1: int,
+                               index_super_2: int
+                               ) -> (np.ndarray, np.ndarray, int):
         """
         find the nearest lattice displacement between a pair of atoms in the supercell,
         also find the multiplication. In this gauge the lattice displacements
@@ -203,7 +229,9 @@ class Model(object):
         return np.array(min_vec), np.array(min_vec_int,dtype=int), multi
     
     
-    def read_fc(self, force_const):
+    def read_fc(self,
+                force_const: str
+                ):
         """
         read force constant from FORCE_CONSTANT file
     
@@ -269,7 +297,9 @@ class Model(object):
        
         
     @functools.lru_cache()
-    def _assign_new_index(self, index):
+    def _assign_new_index(self,
+                          index: int
+                          ) -> int:
         """
         after removing the bottom/top atoms, assign new indexes
         """
@@ -283,7 +313,10 @@ class Model(object):
         return r
     
     
-    def _make_dynamical_matrix(self, k, k_direction=None):
+    def _make_dynamical_matrix(self,
+                               k: np.ndarray,
+                               k_direction: Union[np.ndarray, None] = None
+                               ) -> np.ndarray:
         """
         convert the input force constants to dynamical matrix;
         K-point should be given in reduced coordinates
@@ -321,7 +354,10 @@ class Model(object):
         return dy_mt
 
  
-    def _make_k_path(self, k_path, k_num=150):
+    def _make_k_path(self,
+                     k_path: Union[List, np.ndarray],
+                     k_num: int = 150
+                     ) -> (np.ndarray, np.ndarray, np.ndarray):
         """
         Interpolates a path in reciprocal space between specified
         nodes.
@@ -386,11 +422,12 @@ class Model(object):
     
     
     def solve_dynamical_matrix_kpath(self,
-                                     k_path,
-                                     k_direction=None,
-                                     k_num=150,
-                                     unit=1,
-                                     eig_vec=True):
+                                     k_path: List[List[float]],
+                                     k_direction : Union[np.ndarray, None] = None,
+                                     k_num: int = 150,
+                                     unit: float = 1,
+                                     eig_vec: bool = True
+                                     ) -> (np.ndarray, np.ndarray, np.ndarray):
         """
         convert the input force constants to dynamical matrix on the given k path
         
@@ -399,6 +436,9 @@ class Model(object):
         k_path : list of list
             lists of coordinates of k-point nodes; k-point will be interpolated 
             between two nearby nodes.
+        k_direction : ndarray, optional
+            the k direction for non-analytical correction calculation; if not 
+            specified, the direction is defined automatically by k_path.
         k_num : int, optional
             total number of kpoints interpolated between two nodes
             The default is 150
@@ -419,7 +459,8 @@ class Model(object):
         k_points, _, _ = self._make_k_path(k_path, k_num)
         all_freqs, all_eig_vecs = [], []
         for i, k in enumerate(k_points):
-            if self._read_from_phonopy and self.ph_dm.is_nac() and k_direction is None:
+            if self._read_from_phonopy and self.ph_dm.is_nac()\
+                and k_direction is None and k_num > 1:
                 # setup the direction for nac term
                 k_direction = k_points[i+1] - k_points[i]  
             dy_mt = self._make_dynamical_matrix(k, k_direction)
@@ -452,7 +493,7 @@ class Model(object):
     
     
     @staticmethod
-    def _modify_freq(eig_vals):
+    def _modify_freq(eig_vals: np.ndarray):
         """
         convert the imaginary numbers to negative numbers
 
@@ -464,7 +505,10 @@ class Model(object):
                 eig_vals[j] = -np.sqrt(-eig_val)
 
     
-    def _get_weight(self, vec,site_comb):
+    def _get_weight(self,
+                    vec: np.ndarray,
+                    site_comb: List[List[int]]
+                    ) -> np.ndarray:
         """
         compute the weight for each combintaion of sites according to the
         eigenvector 
@@ -488,7 +532,10 @@ class Model(object):
         return np.array(gw, dtype=float) / norm_f
     
 
-    def _make_color(self, colors, margin_highlight):
+    def _make_color(self,
+                    colors: List[float],
+                    margin_highlight: List[float]
+                    ) -> Tuple[float]:
         """
         convert the eigendisplacements to rgb colors 
 
@@ -515,7 +562,8 @@ class Model(object):
             return tuple([r,g,b])
       
         
-    def _make_title(self, ax):
+    def _make_title(self,
+                    ax: matplotlib.axes.Axes):
         """
         make the title for the plot
         """
@@ -539,7 +587,10 @@ class Model(object):
             ax.set_title(compound)
 
     
-    def _make_legend(self, ax, site_comb, margin_highlight):
+    def _make_legend(self,
+                     ax: matplotlib.axes.Axes,
+                     site_comb : List[List[float]],
+                     margin_highlight: List[float]):
         """
         make the legend for the plot
         """
@@ -566,7 +617,9 @@ class Model(object):
         ax.legend(lines, names)
 
 
-    def _convert_unit(self, unit):
+    def _convert_unit(self,
+                      unit: Union[str, int]
+                      ) -> float:
         """
         Convert the unit if using VASP interface
 
@@ -582,7 +635,9 @@ class Model(object):
             raise Exception("invalid unit specified")
     
     
-    def _set_ylabel(self, unit):
+    def _set_ylabel(self,
+                    unit: str
+                    ) -> str:
         """
         determine the ylabel of the plot based on unit specified 
 
@@ -594,15 +649,15 @@ class Model(object):
 
 
     def atom_projected_band(self,
-                            nodes,
-                            site_comb=None,
-                            node_names=None,
-                            k_num=150,
-                            y_min=None,
-                            y_max=None,
-                            margin_highlight=[0.,0.],
-                            fin_dirc=None,
-                            unit="thz"):
+                            nodes: List[List[float]],
+                            site_comb: Union[List[List[float]], None] = None,
+                            node_names: Union[List[str], None] = None,
+                            k_num: int = 150,
+                            y_min: int = None,
+                            y_max: int = None,
+                            margin_highlight: List[float] = [0.,0.],
+                            fin_dirc: Union[int, None] = None,
+                            unit: Union[str, float] = "thz"):
         """
         Make plain or atom-resolved phonon band plot
         
@@ -639,6 +694,10 @@ class Model(object):
         fin_dirc : int, optional
             the direction of the edge/surface. If not specified, the first value in
             model.fin_dirc will be used
+        unit : str or float, optional
+            the unit of the plot; can be "thz", "cm-1", "cm^-1", "ev", "mev". 
+            The default is "thz"
+        
         """
         
         print("start plotting the atom_resolved band structures...")
@@ -758,7 +817,10 @@ class Model(object):
             self._make_title(ax)
 
     
-    def _make_supercell(self, multi, fin_dirc):
+    def _make_supercell(self,
+                        multi: int,
+                        fin_dirc: int
+                        ) -> Structure:
         """
         Build a supercell for edge/surface states calculation
  
@@ -795,7 +857,12 @@ class Model(object):
         return structure
     
     
-    def cut_piece(self, multi, fin_dirc, bottom_shift=0., top_shift=0.):
+    def cut_piece(self,
+                  multi: int,
+                  fin_dirc: int,
+                  bottom_shift: float = 0.0,
+                  top_shift: float = 0.0
+                  ) -> 'Model':
         """
         Constructs a (dim-1)-dimensional tight-binding model. This is 
         a phonon version of cut_piece function of pythTB. The extra unit cells
@@ -871,7 +938,14 @@ class Model(object):
         #change the indexes and the lattice displacements in force constants
     
     
-    def _pixel_band(self, k, edge_atoms, ylim, y_res, sigma, unit):
+    def _pixel_band(self,
+                    k: np.ndarray,
+                    edge_atoms: np.ndarray,
+                    ylim: np.ndarray,
+                    y_res: int,
+                    sigma: float,
+                    unit: float
+                    ) -> np.ndarray:
         """
         make a series of grids at k whose colors depends on edge_atoms
         """
@@ -901,13 +975,14 @@ class Model(object):
 
 
     def plot_edge(self,
-                  nodes,
-                  edge,
-                  ylim,
-                  k_num=100,
-                  fin_dirc=None,
-                  sigma=2,
-                  unit="thz"):
+                  nodes: List[List[float]],
+                  edge: List[float],
+                  y_min: float,
+                  y_max: float,
+                  k_num: int = 100,
+                  fin_dirc: Union[int, None] = None,
+                  sigma: float = 2,
+                  unit: Union[str, float] = "thz"):
         """
         plot edge/surface states, smear the bulk bands with gaussian
         
@@ -920,9 +995,10 @@ class Model(object):
             be colored. The value should be given in the unit of lattice vector
             of the primitive cell. For example, edge_highlight=[1,1] will highlight 
             the contribution from the bottom primitive cell and the top primitive cell.
-        ylim : list, [float, float]
-            Y range of the plot; if using vasp outputs, the unit of ylim must match
-            the given unit argument.
+        y_min : int
+            lower bound of the plot.
+        y_max : int
+            upper bound of the plot.
         k_num : int, optional
             total number of kpoints in the plot
             The default is 100
@@ -934,10 +1010,13 @@ class Model(object):
         sigma : float, optional
             standard deviation for Gaussian kernel
             The default is 2
+        unit : str or float, optional
+            the unit of the plot; can be "thz", "cm-1", "cm^-1", "ev", "mev". 
+            The default is "thz"
         
         """
         
-        ylim = np.array(ylim)        
+        ylim = np.array([y_min, y_max])        
         # convert unit 
         unit_num = self._convert_unit(unit)
         # get ylabel
@@ -993,7 +1072,15 @@ class Model(object):
         pass
         
     
-    def _sample_2d_band(self, band_index, center, xy_range, dirc, z, k_num, unit):
+    def _sample_2d_band(self,
+                        band_index: int,
+                        center: List[float],
+                        xy_range: float,
+                        dirc: int,
+                        z: float,
+                        k_num: int,
+                        unit: float
+                        ) -> (np.ndarray, np.ndarray, np.ndarray):
         """
         compute all wavefunctions on a 2d grid.
         
@@ -1028,15 +1115,15 @@ class Model(object):
     
     
     def plot_3d_band(self,
-                     band_indexes,
-                     center,
-                     xy_range,
-                     dirc=2,
-                     z=0.,
-                     k_num=10,
-                     tol=0.5,
-                     view=None,
-                     unit='thz'
+                     band_indexes: List[int],
+                     center: List[float],
+                     xy_range: float,
+                     dirc: int = 2,
+                     z: float = 0.0,
+                     k_num: int = 10,
+                     tol: float = 0.5,
+                     view: Union[List[float], None] = None,
+                     unit: Union[str, float] = 'thz'
                      ):
 
         """
@@ -1069,6 +1156,9 @@ class Model(object):
             the elevation (degree above or below the xy-plane) while the second
             number sets the azimuth (degree rotated about z-axis)
             The default is None
+        unit : str or float, optional
+            the unit of the plot; can be "thz", "cm-1", "cm^-1", "ev", "mev". 
+            The default is "thz"
         """
 
         from mpl_toolkits.mplot3d import Axes3D
