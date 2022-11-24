@@ -3,7 +3,7 @@
 * Build tight-binding models from user's input or FORCE_CONSTANTS files or Phonopy API. The last method is much faster, but need to import Phonopy package and manually create phonopy.harmonic.dynamical_matrix.DynamicalMatrix object.  
 * Calculate berry phase, berry curvature, wannier charge center evolution around Weyl points from tight-binding model.  
 * Build slab/ribbon models for surface/edge.  
-* plot 3d band surfaces.   
+* Plot 3d band surfaces.   
 
 ## Basic usage:  
 
