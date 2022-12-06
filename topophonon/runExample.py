@@ -5,10 +5,9 @@ Created on Wed Sep  7 15:08:31 2022
 @author: zhuhe
 """
 
-
-from structure import Structure
-from model import read_from_files, Model
-from topology import Topology
+from topophonon.structure import Structure
+from topophonon.model import read_from_files, Model
+from topophonon.topology import Topology
 
 
 ######### LiCaAs #############

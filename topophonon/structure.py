@@ -4,7 +4,7 @@ This module contains the class that describes the crystal structure related
 properties
 """
 
-from masses import masses_dict
+from topophonon.masses import masses_dict
 
 import numpy as np
 

@@ -3,8 +3,8 @@
 This module contains the class that describes the phonon tight binding model
 """
 
-from structure import Structure
-from units import VASP2THZ, masses_dict
+from topophonon.structure import Structure
+from topophonon.units import VASP2THZ, masses_dict
 
 import os
 import re

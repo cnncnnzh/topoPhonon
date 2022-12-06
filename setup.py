@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     
 setuptools.setup(
     name="topoPhonon",
-    version="1.0.0",
+    version="1.0.3",
     python_requires=">=3.8",
     install_requires=[
         "matplotlib>=3.5.2",
