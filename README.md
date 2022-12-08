@@ -5,6 +5,10 @@
 * Build slab/ribbon models for surface/edge.  
 * Plot 3d band surfaces.   
 
+## Installation:
+
+`pip install topophonon` 
+
 ## Basic usage:  
 
 Use one line of code to build tight-binding model:  
