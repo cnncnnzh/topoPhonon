@@ -230,3 +230,27 @@ model.atom_projected_band(
     node_names=["$\Gamma$", "X", "M", "$\Gamma$", "R"],
     site_comb=[[0], [1], [2, 3, 4]],
 )
+
+
+######## MgB2 ##########
+print("nodal lines for MgB2!!")
+model = read_from_files(r"..\tests\MgB2")
+q_path = [
+    [0.5,0.0,0.0],
+    [0.0,0.0,0.0],
+    [1/3,1/3,0.0],
+    [1/3,1/3,0.5],
+    [0.0,0.0,0.0],
+    [0.0,0.0,0.5]
+]
+model.atom_projected_band(
+    q_path,
+    node_names=['M', "$\Gamma$", 'K', 'H', "$\Gamma$", 'A'],
+    k_num=80
+)
+tp = Topology(model)
+wfs1 = tp.gen_circle_wfs([1/3,1/3],r=0.01,z=0.2)
+print("berry phase around the nodal line")
+print("for band1:", tp.wilson_loop([1], wfs1,))
+print("for band3:", tp.wilson_loop([3], wfs1,))
+print("for band6:", tp.wilson_loop([6], wfs1,))
