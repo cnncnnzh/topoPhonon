@@ -243,10 +243,17 @@ q_path = [
     [0.0,0.0,0.0],
     [0.0,0.0,0.5]
 ]
+node_names=['M', "$\Gamma$", 'K', 'H', "$\Gamma$", 'A']
+# project electron scattering intensity onto the band structure
 model.atom_projected_band(
     q_path,
-    node_names=['M', "$\Gamma$", 'K', 'H', "$\Gamma$", 'A'],
-    k_num=80
+    node_names=node_names,
+    k_num=200,
+    unit='THz',
+    qi=[1,0,0],
+    T=1000,
+    int_factor=1,
+    max_size=0.1
 )
 tp = Topology(model)
 wfs1 = tp.gen_circle_wfs([1/3,1/3],r=0.01,z=0.2)
