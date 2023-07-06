@@ -27,3 +27,6 @@ Then plot wannier charge center evolution around `center` for `band_indices`:
 `tp.wcc_evol_sphere(band_indices, center)`  
 and the berry curvature distribution on $k_i$=`kz` plane, where $k_i$ = $k_z, k_y, k_z$ if `dirc` = 0, 1, 2, respectively:  
 `tp.berry_curvature_proj(band_indices, dirc, kz)`  
+
+
+#### More examples can be found in runExamples.py file
