@@ -33,12 +33,11 @@ class Model(object):
         Parameters
         ----------
         structure: Structure
-            a Structure object
+            A Structure object
         dm: phonopy.harmonic.dynamical_matrix.DynamicalMatrix, optional
-            the DynamicalMatrix object from phonopy API
+            The DynamicalMatrix object from phonopy API
             The default is None
         """
-        
         self.structure = structure 
         self.VASPcal = False
         if dm is not None:
@@ -69,23 +68,22 @@ class Model(object):
                lattice_vec_int: Union[List[int], np.ndarray],
                fc: Union[List[complex], np.ndarray],):
         """
-        set force constants manually
+        Set force constants manually
         
         Parameters
         ----------
         atom_1 : int
-            the index of the 1st atom in the original unit cell
+            The index of the 1st atom in the original unit cell
         atom_2 : int
-            the index of the 2st atom in the original unit cell
+            The index of the 2st atom in the original unit cell
         lattice_vec : list or ndarray of float
-            the vector from atom_1 to atom_2 in direct coordinate.
+            The vector from atom_1 to atom_2 in direct coordinate.
         lattice_vec_int: list of int
-            the vector that connect the unit cell of atom_1 and the unit cell of 
+            The vector that connect the unit cell of atom_1 and the unit cell of 
             atom_2 in direct coordinate. The elements must be integers. 
         fc: list or ndarray of complex
-            the "dim" * "dim" force constants matrix 
+            The "dim" * "dim" force constants matrix 
         """
-        
         assert isinstance(fc, (list, np.ndarray)),\
             "the force constants must be given in a list or array"
         assert len(fc) == self.structure.dim,\
@@ -113,11 +111,10 @@ class Model(object):
                     atom: Union[int, None] = None
                     ) -> (int, np.ndarray):
         """
-        find the index in the primitive cell of
+        Find the index in the primitive cell of
         an atom in the supercell, as well as its lattice translation
         relative to the primitive cell 
         """
-        
         for i, org_cart in enumerate(self.structure.prm_cart):
             if isinstance(cart, (list, np.ndarray)):
                 diff = cart - org_cart
@@ -139,9 +136,8 @@ class Model(object):
                          atom_2: int
                          ) -> (int, int, np.ndarray): 
         """
-        express the vector of a pair in the unit of primitive lattice.
-        the atoms are specified by their indexes in the supercell.
-    
+        Express the vector of a pair in the unit of primitive lattice.
+        The atoms are specified by their indexes in the supercell.
         """
         i_1, lat_disp_1 = self._atom_index(atom=atom_1)
         i_2, lat_disp_2 = self._atom_index(atom=atom_2)
@@ -156,8 +152,8 @@ class Model(object):
                           cart_1: np.ndarray,
                           cart_2: np.ndarray) -> (int, int, np.ndarray):
         """
-        express the vector of a pair in the unit of primitive lattice.
-        the atoms are specified by their cartesian coordinate.
+        Express the vector of a pair in the unit of primitive lattice.
+        The atoms are specified by their cartesian coordinate.
     
         """
         i_1, lat_disp_1 = self._atom_index(cart=cart_1)
@@ -173,9 +169,8 @@ class Model(object):
                        index_super_2: int
                        ) -> (np.ndarray, np.ndarray, int):
         """
-        find the nearest lattice displacement between a pair of atoms in the supercell,
-        also find the multiplication. In this gauge the lattice displacements
-        are not integers
+        Find the nearest lattice displacement between a pair of atoms in the supercell,
+        also find the multiplication. In this gauge the lattice displacements are not integers
 
         """     
         cart_1 = self.structure.super_cart[index_super_1]
@@ -212,19 +207,18 @@ class Model(object):
                 force_const: str
                 ):
         """
-        read force constant from FORCE_CONSTANT file
+        Read force constant from FORCE_CONSTANT file
     
         Parameters
         ----------
         force_const : str
-            the path of the FORCE_CONSTANTS file
+            The path of the FORCE_CONSTANTS file
         """    
         # in the iteration, find which unit cell an atom belongs to, as well
         # as its relative coord
         self.VASPcal = True
         
         #start reading force constants
-        
         print("start reading force constants...")
         assert os.path.exists(force_const), "{} not found".format(force_const)
         with open(force_const) as f:
@@ -279,9 +273,7 @@ class Model(object):
     def _assign_new_index(self,
                           index: int
                           ) -> int:
-        """
-        after removing the bottom/top atoms, assign new indexes
-        """
+        """After removing the bottom/top atoms, assign new indexes"""
         r = index
         for i in self.bottom_del:
             if i < index:
@@ -297,10 +289,9 @@ class Model(object):
                                  k_direction: Union[np.ndarray, None] = None
                                  ) -> np.ndarray:
         """
-        convert the input force constants to force constant matrix;
-        K-point should be given in reduced coordinates
+        Convert the input force constants to force constant matrix;
+        K-point should be given in reduced coordinates.
         """
-
         if self._read_from_phonopy:
             if k_direction is None:
                 self.ph_dm.run(np.array(k))
@@ -321,9 +312,8 @@ class Model(object):
                 index_I = self._assign_new_index(index_I)  
                 index_J = self._assign_new_index(index_J)
                 # consider the directions that are periodic
-                # per = [i for i in range(dim) if i not in self.fin_dirc]
-                phase_factor = np.exp(2j * np.pi * np.vdot(k, vec_int))
-                # phase_factor = np.exp(2j * np.pi * np.vdot(k, lattice_vec))
+                # phase_factor = np.exp(2j * np.pi * np.vdot(k, vec_int))
+                phase_factor = np.exp(2j * np.pi * np.vdot(k, lattice_vec))
                 row, col = (index_I)*dim, (index_J)*dim
                 dy_mt[row:row+dim, col:col+dim] += phase_factor * fc
             # make dynamical matrix hermitian
@@ -336,10 +326,9 @@ class Model(object):
                                k_direction: Union[np.ndarray, None] = None
                                ) -> np.ndarray:
         """
-        convert the input force constants to dynamical matrix;
-        K-point should be given in reduced coordinates
+        Convert the input force constants to dynamical matrix;
+        K-point should be given in reduced coordinates.
         """
-
         if self._read_from_phonopy:
             if k_direction is None: 
                 self.ph_dm.run(np.array(k))
@@ -376,16 +365,11 @@ class Model(object):
                      k_path: Union[List, np.ndarray],
                      k_num: int = 150
                      ) -> (np.ndarray, np.ndarray, np.ndarray):
-        """
-        Interpolates a path in reciprocal space between specified
-        nodes.
-        """ 
+        """Interpolates a path in reciprocal space between specified nodes.""" 
         assert isinstance(k_path, (list, np.ndarray)),\
             "the node coordinates must be given in a list or array"
-            
         # number of nodes
         n_nodes = len(k_path)
-        
         k_path_temp = []
         # set the non-periodic direction to be zero
         for node in k_path:
@@ -447,33 +431,31 @@ class Model(object):
                                      eig_vec: bool = True
                                      ) -> (np.ndarray, np.ndarray, np.ndarray):
         """
-        convert the input force constants to dynamical matrix on the given k path
+        Convert the input force constants to dynamical matrix on the given k path.
         
         Parameters
         ----------
         k_path : list of list
-            lists of coordinates of k-point nodes; k-point will be interpolated 
+            Lists of coordinates of k-point nodes; k-point will be interpolated 
             between two nearby nodes.
         k_direction : ndarray, optional
-            the k direction for non-analytical correction calculation; if not 
+            The k direction for non-analytical correction calculation; if not 
             specified, the direction is defined automatically by k_path.
         k_num : int, optional
-            total number of kpoints interpolated between two nodes
-            The default is 150
+            Total number of kpoints interpolated between two nodes.
+            The default is 150.
         convert_unit : boolean, optional
-            determine whether convert the unit from VASP to THz.
+            Determine whether convert the unit from VASP to THz.
             The default is True
         eig_vec : boolean, optional
-            determine whether eigenvectors are 
+            Determine whether eigenvectors are determined.
         
         Returns
         -------
-        the dynamical matrix at each point;
-        frequencies of all bands at each k
-        eigenvectors of all bands at each k
-        
+        The dynamical matrix at each point.
+        Frequencies of all bands at each k.
+        Eigenvectors of all bands at each k.
         """
-
         k_points, _, _ = self._make_k_path(k_path, k_num)
         all_freqs, all_eig_vecs = [], []
         for i, k in enumerate(k_points):
@@ -514,10 +496,7 @@ class Model(object):
                     vec: np.ndarray,
                     site_comb: List[List[int]]
                     ) -> np.ndarray:
-        """
-        compute the weight for each combintaion of sites according to the
-        eigenvector 
-        """
+        """Compute the weight for each combintaion of sites according to the eigenvector."""
         num_atom = len(self.structure.masses)
         new_vec = np.zeros(num_atom)
         for i in range(num_atom):
@@ -541,10 +520,7 @@ class Model(object):
                     colors: List[float],
                     margin_highlight: List[float]
                     ) -> Tuple[float]:
-        """
-        convert the eigendisplacements to rgb colors 
-
-        """
+        """Convert the eigendisplacements to rgb colors."""
         if len(colors) == 2:
             return tuple([colors[0],0,colors[1]])
         # if there are three groups, use red and green and blue
@@ -569,9 +545,7 @@ class Model(object):
         
     def _make_title(self,
                     ax: matplotlib.axes.Axes):
-        """
-        make the title for the plot
-        """
+        """Make the title for the plot."""
         if self.structure.atoms is None:
             return
         atom_count = {}
@@ -596,11 +570,9 @@ class Model(object):
                      ax: matplotlib.axes.Axes,
                      site_comb : List[List[float]],
                      margin_highlight: List[float]):
-        """
-        make the legend for the plot
-        """
+        """Make the legend for the plot."""
         from matplotlib.lines import Line2D
-
+        
         if len(site_comb) == 2:
             lines = [Line2D([0], [0], color='red', lw=2.5),
                 Line2D([0], [0], color='blue', lw=2.5)]
@@ -625,11 +597,7 @@ class Model(object):
     def _convert_unit(self,
                       unit: Union[str, int]
                       ) -> float:
-        """
-        Convert the unit if using VASP interface
-
-        """
-        
+        """Convert the unit if using VASP interface."""
         if isinstance(unit, str) and unit.lower() in unit_dict:
             # if given a string, convert only if using vasp outputs
             unit_vasp = VASP2THZ * unit_dict[unit.lower()]
@@ -638,9 +606,6 @@ class Model(object):
             return unit
         else:
             raise Exception("invalid unit specified")
-    
-    
-
 
 
     def atom_projected_band(self,
@@ -884,11 +849,7 @@ class Model(object):
                         multi: int,
                         fin_dirc: int
                         ) -> Structure:
-        """
-        Build a supercell for edge/surface states calculation
- 
-        """
-        
+        """Build a supercell for edge/surface states calculation"""
         old_strc = self.structure
         num = len(old_strc.masses)
 
@@ -990,16 +951,13 @@ class Model(object):
                 
                 # the vector in the given directon is not considered any more
                 new_vec = copy.deepcopy(vec)
-                new_vec[fin_dirc] = 0.0
-                
+                new_vec[fin_dirc] = 0.0 
                 new_vec_int = copy.deepcopy(vec_int)
-                new_vec_int[fin_dirc] = 0.0
-                
+                new_vec_int[fin_dirc] = 0.0 
                 model.set_fc(int(atom_1), int(atom_2), new_vec, new_vec_int, fc)
         
         return model
-        #change the indexes and the lattice displacements in force constants
-    
+
     
     def _pixel_band(self,
                     k: np.ndarray,
@@ -1009,9 +967,7 @@ class Model(object):
                     sigma: float,
                     unit: float
                     ) -> np.ndarray:
-        """
-        make a series of grids at k whose colors depends on edge_atoms
-        """
+        """Make a series of grids at k whose colors depends on edge_atoms."""
         nb_atoms = len(self.structure.masses)
         y_grid = np.zeros(y_res)
         dy_mt = self._make_dynamical_matrix(k)
@@ -1031,7 +987,7 @@ class Model(object):
             index = (freq-ylim[0]) // ((ylim[1]-ylim[0])/y_res)
             y_grid[int(index)] += np.dot(new_vec, edge_atoms)
             
-        # # gaussian smearing
+        ## gaussian smearing
         y_grid = gaussian_filter1d(y_grid, sigma)
         return y_grid
 
@@ -1124,7 +1080,6 @@ class Model(object):
                                             y_res,
                                             sigma,
                                             unit_num)     
-            # print(max(weights[:,i]))
         y_grid = np.linspace(ylim[0], ylim[1], y_res)
         X, Y = np.meshgrid(k_dist, y_grid)
         fig, ax = plt.subplots()
@@ -1139,9 +1094,8 @@ class Model(object):
         ax.tick_params(labelsize=15)
         if len(self.fin_dirc) == 0:
             self._make_title(ax)
-        
+    
         plt.show()
-        
         return fig
 
     
@@ -1154,10 +1108,7 @@ class Model(object):
                         k_num: int,
                         unit: float
                         ) -> (np.ndarray, np.ndarray, np.ndarray):
-        """
-        compute all wavefunctions on a 2d grid.
-        
-        """
+        """Compute all wavefunctions on a 2d grid."""
         step = xy_range/k_num/2
         kx = np.arange(center[0]-xy_range, center[0]+xy_range+step, step)
         ky = np.arange(center[1]-xy_range, center[1]+xy_range+step, step)
@@ -1199,43 +1150,42 @@ class Model(object):
                      ) -> matplotlib.figure.Figure:
 
         """
-        plot one or two bands on a 2d squared grid, with energies on the z axis
+        Plot one or two bands on a 2d squared grid, with energies on the z axis.
         
         Parameters
         ----------
         band_indexes: list of int
-            a list of integers correspoding to band indexes
+            A list of integers correspoding to band indexes.
         center : list, [float, float]
-            two floats that specify the coordinates of the center on the 2d square
+            Two floats that specify the coordinates of the center on the 2d square.
         xy_range : float
-            the edge length of the 2d square
+            The edge length of the 2d square.
         dirc : int, optional
-            the direction that is normal to the 2d grid
-            The default is 2
+            The direction that is normal to the 2d grid.
+            The default is 2.
         z : float, optional
-            the third coordinate that defines the plane
-            The default is 0.0
+            The third coordinate that defines the plane.
+            The default is 0.0.
         k_num : int, optional
-            the number of points sampled in both directions
-            The default is 10
+            The number of points sampled in both directions.
+            The default is 10.
         tol : float, optional
-            if the length of band_indexes is two, the k_point where the energy
+            If the length of band_indexes is two, the k_point where the energy
             difference is below tol will be dotted. In many cases the value of t
             ol should be increased to see the degenerate points.
-            The default is 0.5
+            The default is 0.5.
         view : list, [float, float], optional
-            two numbers that changes the view of the plot; the first number sets
+            Two numbers that changes the view of the plot; the first number sets
             the elevation (degree above or below the xy-plane) while the second
-            number sets the azimuth (degree rotated about z-axis)
-            The default is None
+            number sets the azimuth (degree rotated about z-axis). 
+            The default is None.
         unit : str or float, optional
-            the unit of the plot; can be "thz", "cm-1", "cm^-1", "ev", "mev". 
-            The default is "thz"
+            The unit of the plot; can be "thz", "cm-1", "cm^-1", "ev", "mev". 
+            The default is "thz".
         Returns
         -------
-        A matplotlib.figure.Figure object containing phonon band plot
+        A matplotlib.figure.Figure object containing phonon band plot.
         """
-
         from mpl_toolkits.mplot3d import Axes3D
         
         # scale the tolerance
@@ -1296,33 +1246,32 @@ class Model(object):
                   branches: Union[str, List[int]]="all"
                   ) -> np.array:
         """
-        calculate electron diffuse scattering intensity for a given scattering vector 
+        Calculate electron diffuse scattering intensity for a given scattering vector.
         
         Parameters
         ----------
         H : list of int
-            Reciprocal lattice vector
+            Reciprocal lattice vector.
         k : list of float
-            Phonon wavevector; The scattering vector q is given by H + k
+            Phonon wavevector; The scattering vector q is given by H + k.
         DW_matrices : list of ndarray
-            Debye-Waller coefficient matrix for each atom, which is calculated from DW_coefficient() function
+            Debye-Waller coefficient matrix for each atom, which is calculated from DW_coefficient() function.
         T : float, optional
-            Temperature at which the intensity is calculated in Kelvin
-            The default is 300.0
+            Temperature at which the intensity is calculated in Kelvin.
+            The default is 300.0.
         e_range : list of float, optional
-            Intensity is evaluated within e ~ [e_range[0], e_range[1]]. If None, the whole energy range is considered
-            The default is None
+            Intensity is evaluated within e ~ [e_range[0], e_range[1]]. If None, the whole energy range is considered.
+            The default is None.
         de : float, optional
-            The intensity is evaluated every de THz
-            The default is 0.5
+            The intensity is evaluated every de THz.
+            The default is 0.5.
         branches : list of int, optional
-            The indices of band included in the intensity calculation. If 'all', all the bands are .
-            The default is 'all'
+            The indices of band included in the intensity calculation. If 'all', all the bands are.
+            The default is 'all'.
         Returns
         -------
         ndarray contains all the intensities.
-        """
-        
+        """        
         H = np.array(H, dtype=complex)
         k = np.array(k, dtype=complex)
         # scattering factor q
@@ -1425,9 +1374,7 @@ class Model(object):
                        T: float,
                        k_num: int = 10
                        ) -> List[np.array]: 
-        '''
-        return the Debye Waller coefficient matrix for atom s
-        '''
+        """Return the Debye Waller coefficient matrix for atom s.""" 
         
         HB = HBARCGS * 10 ** 16  # cm^2gs-1 to A^2gs-1
         
@@ -1465,18 +1412,17 @@ class Model(object):
     
 def read_from_files(path):
     """
-    Allows users to build tb-model by reading POSCAR, SPOSCAR and FORCE_CONSTANTS 
+    Allows users to build tb-model by reading POSCAR, SPOSCAR and FORCE_CONSTANTS. 
 
     Parameters
     ----------
     path : str
-        path of a directory that contains "POSCAR", "SPOSCAR" and "FORCE_CONSTANTS"  
+        Path of a directory that contains "POSCAR", "SPOSCAR" and "FORCE_CONSTANTS". 
 
     Returns
     -------
     a Model object
     """
-    import os
     # make a structure object
     poscar = os.path.join(path, "POSCAR")
     sposcar = os.path.join(path, "SPOSCAR")
