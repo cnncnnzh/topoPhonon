@@ -29,4 +29,4 @@ and the berry curvature distribution on $k_i$=`kz` plane, where $k_i$ = $k_z, k_
 `tp.berry_curvature_proj(band_indices, dirc, kz)`  
 
 
-#### More examples can be found in runExample.py file
+#### More examples can be found in runExamples.py file
