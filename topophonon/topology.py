@@ -7,11 +7,12 @@ Created on Sat Aug 20 21:10:49 2022
 
 from topophonon.utils import _make_k_grid
 
+from scipy.linalg import sqrtm
+import matplotlib.pyplot as plt
+
 import copy
 import numpy as np
-from scipy.linalg import sqrtm
 import warnings
-import matplotlib.pyplot as plt
 import functools
 from copy import deepcopy
 

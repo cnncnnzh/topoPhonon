@@ -8,6 +8,7 @@ from topophonon.units import masses_dict
 from topophonon.utils import _direct_to_cartesian
 
 import numpy as np
+
 import os
 import re
 import warnings

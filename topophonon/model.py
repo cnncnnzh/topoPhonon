@@ -12,13 +12,13 @@ from topophonon.utils import _convert_pair_to_str, _cartesian_to_direct, _modify
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter1d
 
 import os
 import re
 import copy
 from tqdm import tqdm
 import functools
-from scipy.ndimage import gaussian_filter1d
 from typing import List, Union, Tuple
 
 class Model(object):
