@@ -25,7 +25,8 @@ class Structure():
                  lat: List[List[float]] = None,
                  coords: List[List[float]] = None,
                  masses: List[float] = None,
-                 atoms: List[str] = None, ):
+                 atoms: List[str] = None, 
+                 shift: List[float] = [0.0, 0.0, 0.0]):
         """
         Parameters
         ----------

@@ -108,18 +108,19 @@ class Model(object):
 
     def _atom_index(self,
                     cart: np.ndarray = None,
-                    atom: Union[int, None] = None
+                    atom: Union[int, None] = None,
                     ) -> (int, np.ndarray):
         """
         Find the index in the primitive cell of
         an atom in the supercell, as well as its lattice translation
         relative to the primitive cell 
         """
+        cart_shift = np.dot(np.array(self.structure.shift) , self.structure.lat)
         for i, org_cart in enumerate(self.structure.prm_cart):
             if isinstance(cart, (list, np.ndarray)):
-                diff = cart - org_cart
+                diff = cart - org_cart + cart_shift
             elif atom is not None:
-                diff = self.structure.super_cart[atom] - org_cart
+                diff = self.structure.super_cart[atom] - org_cart + cart_shift
             else:
                 raise Exception("Failed to calculate an atomic index")
             lattice_disp = np.dot(diff, np.linalg.inv(self.structure.lat))
