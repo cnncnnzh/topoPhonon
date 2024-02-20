@@ -73,7 +73,7 @@ class Structure():
         if masses is not None:
             assert isinstance(masses, list), ("the masses must be given in a list")
             self.masses = masses
-        self.shift = shift
+        self.shift = np.array(shift)
         
     def _atoms_to_masses(self,
                          atoms: List[str]):
