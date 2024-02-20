@@ -5,14 +5,11 @@ Created on Sat Aug 20 21:10:49 2022
 @author: zhuhe
 """
 
-from topophonon.utils import _make_k_grid
-
-from scipy.linalg import sqrtm
-import matplotlib.pyplot as plt
-
 import copy
 import numpy as np
+from scipy.linalg import sqrtm
 import warnings
+import matplotlib.pyplot as plt
 import functools
 from copy import deepcopy
 
@@ -165,7 +162,90 @@ class Topology():
             # print(kpt)
             wfs.append(self._wfs_at_kpt(kpt))
         return np.array(wfs)
+    
+    @staticmethod
+    def find_vector_with_the_same_gauge(vector_1, vector_0):
+        phase_1_pre = 0
+        phase_2_pre = 3.14
+        n_test = 100000
+        for i0 in range(n_test):
+            test_1 = np.sum(np.abs(vector_1*np.exp(1j*phase_1_pre) - vector_0))
+            test_2 = np.sum(np.abs(vector_1*np.exp(1j*phase_2_pre) - vector_0))
+            if test_1 < 1e-7:
+                phase = phase_1_pre
+                # print('Done with i0=', i0)
+                break
+            if i0 == n_test-1:
+                phase = phase_1_pre
+                print('Gauge Not Found with i0=', i0)
+            if test_1 < test_2:
+                if i0 == 0:
+                    phase_1 = phase_1_pre-(phase_2_pre-phase_1_pre)/2
+                    phase_2 = phase_1_pre+(phase_2_pre-phase_1_pre)/2
+                else:
+                    phase_1 = phase_1_pre
+                    phase_2 = phase_1_pre+(phase_2_pre-phase_1_pre)/2
+            else:
+                if i0 == 0:
+                    phase_1 = phase_2_pre-(phase_2_pre-phase_1_pre)/2
+                    phase_2 = phase_2_pre+(phase_2_pre-phase_1_pre)/2
+                else:
+                    phase_1 = phase_2_pre-(phase_2_pre-phase_1_pre)/2
+                    phase_2 = phase_2_pre 
+            phase_1_pre = phase_1
+            phase_2_pre = phase_2
+        vector_1 = vector_1*np.exp(1j*phase) 
+        return vector_1
 
+
+    @staticmethod
+    def find_vector_with_fixed_gauge_by_making_one_component_real(vector, precision=0.001, index=None):
+        vector = np.array(vector)
+        if index == None:
+            index = np.argmax(np.abs(vector))
+        # print(index)
+        angle = np.angle(vector[index])
+        vector = vector*np.exp(-1j*angle)
+        
+        # sign_pre = np.sign(np.imag(vector[index]))
+        # for phase in np.arange(0, 2*np.pi, precision):
+        #     sign =  np.sign(np.imag(vector[index]*np.exp(1j*phase)))
+        #     if np.abs(np.imag(vector[index]*np.exp(1j*phase))) < 1e-8 or sign == -sign_pre:
+        #         # print('found gauge')
+        #         break
+        #     sign_pre = sign
+        # vector = vector*np.exp(1j*phase)
+        # if np.real(vector[index]) < 0:
+        #     vector = -vector
+        return vector 
+
+
+    def connection(self, k, band, delta=1e-9, precision=0.0001, index=None):
+        dy_mt = self.model._make_dynamical_matrix(k)
+        eigenvalue, eigenvector = np.linalg.eigh(dy_mt)
+        vector = eigenvector[:, np.argsort(np.real(eigenvalue))[band]]
+        # print('vector',vector)
+        vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(vector, precision=precision, index=index)  
+        # print('vector',vector)
+        # vector = self.find_vector_with_the_same_gauge(d_vector, vector)
+        
+        k = np.dot(k, self.model.structure.k_lat)
+        A = []
+        for d in range(self.model.dim):
+            dk = copy.deepcopy(k)
+            dk[d] = dk[d] + delta
+            dk = np.dot(dk, np.linalg.inv(self.model.structure.k_lat))
+            # print(dk)
+            dmt = self.model._make_dynamical_matrix(dk)
+            d_eigenvalue, d_eigenvector = np.linalg.eigh(dmt)
+            d_vector = d_eigenvector[:, np.argsort(np.real(d_eigenvalue))[band]]
+            d_vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(d_vector, precision=precision, index=index)
+            # d_vector = self.find_vector_with_the_same_gauge(d_vector, vector)
+            # print('vector',vector)
+            # print('d_vector',d_vector)
+            # print('d_vector-vector', d_vector-vector)
+            A.append(1j * np.dot(vector.transpose().conj(), d_vector-vector)/delta)
+        return A
 
     @staticmethod
     def wilson_loop(band_indices, all_wfs,):
@@ -361,10 +441,10 @@ class Topology():
                             continue
                         wfm = np.array(eig_vecs[0][:,m])
                         fm = freqs[0][m]
-                        if abs(fi - fm) < 1e-15:
+                        if abs(fi - fm) < 1e-22:
                             warnings.warn("band {} and {} are likely to be degenerate at {}"\
                                             .format(band_indices[i], m, kpt))
-                        if abs(fj - fm) < 1e-15:
+                        if abs(fj - fm) < 1e-22:
                             warnings.warn("band {} and {} are likely to be degenerate at {}"\
                                             .format(band_indices[j], m, kpt))
                         prod1, prod2 = np.zeros(3, dtype=complex), np.zeros(3, dtype=complex)
@@ -379,6 +459,17 @@ class Topology():
             raise Exception("To calculate berry curvatures, the dimension must\
                             be 2 or 3")
         return np.real(1j * np.trace(total)) 
+    
+    
+    @staticmethod
+    def _make_k_grid(xy_range, num):
+        """
+        make a 2d k_grid for berry_curvature_proj and berry_curvature_2d method
+        """
+        interval = xy_range/num
+        a = np.arange(-xy_range, xy_range+interval, interval)
+        kx,ky = np.meshgrid(a,a)
+        return kx, ky
         
     
     # @staticmethod    
@@ -443,7 +534,7 @@ class Topology():
         # # b = np.hstack((b1,b2))
         # b = np.arange(-xy_range[1], xy_range[1], interval_1)
         # kx,ky = np.meshgrid(a,b)
-            kx, ky = _make_k_grid(xy_range, num)
+        kx, ky = self._make_k_grid(xy_range, num)
         kx0, ky0 = center[0], center[1]
         #the x and y component of berry curvature
         # for group in band_indices:
