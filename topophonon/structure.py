@@ -232,4 +232,39 @@ class Structure():
         except:
             raise ValueError("Something goes wrong with {}". format(sposcar))
 
+
+    @staticmethod  
+    def _write_structure(file, lat, atoms, count, coords):
+        with open (file, 'w') as f:
+            f.write('Output from topoPhonon\n')
+            f.write('  {:.6f} \n'.format(1))
+            f.write("    {:.6f}    {:.6f}    {:.6f}\n    {:.6f}    {:.6f}    {:.6f}\n    {:.6f}    {:.6f}    {:.6f}\n"\
+                          .format(lat[0][0], lat[0][1], lat[0][2],
+                                  lat[1][0], lat[1][1], lat[1][2],
+                                  lat[2][0], lat[2][1], lat[2][2],))
+            for atom in atoms:
+                f.write("    {}".format(atom))       
+            f.write('\n')
+            for c in count:
+                f.write("    {}".format(c))
+            f.write('\n')
+            f.write('Direct')
+            f.write('\n')
+            for coord in coords:
+                f.write('    {:.6f}    {:.6f}    {:.6f}\n'.format(coord[0], coord[1], coord[2])) 
+
+   
+    def write_poscar(self, file):
+        """
+        output the structure in VASP POSCAR format
+        
+        Parameters
+        ----------
+        file : str
+            the path of output POSCAR file
     
+        """
+        lat = self.lat
+        atoms, count = np.unique(self.atoms,return_counts=True)
+        coords = self.prm_dirc
+        self._write_structure(file, lat, atoms, count, coords)   
