@@ -139,7 +139,7 @@ class Topology():
         # make sure the last wf is equal to the first one
         wfs.append(wfs[0])
         return np.array(wfs)
-
+    
     
     def _gen_orbit_wfs(self, center, r, theta, dirc, k_num=60):
         """
@@ -206,17 +206,6 @@ class Topology():
         # print(index)
         angle = np.angle(vector[index])
         vector = vector*np.exp(-1j*angle)
-        
-        # sign_pre = np.sign(np.imag(vector[index]))
-        # for phase in np.arange(0, 2*np.pi, precision):
-        #     sign =  np.sign(np.imag(vector[index]*np.exp(1j*phase)))
-        #     if np.abs(np.imag(vector[index]*np.exp(1j*phase))) < 1e-8 or sign == -sign_pre:
-        #         # print('found gauge')
-        #         break
-        #     sign_pre = sign
-        # vector = vector*np.exp(1j*phase)
-        # if np.real(vector[index]) < 0:
-        #     vector = -vector
         return vector 
 
 
@@ -224,9 +213,10 @@ class Topology():
         dy_mt = self.model._make_dynamical_matrix(k)
         eigenvalue, eigenvector = np.linalg.eigh(dy_mt)
         vector = eigenvector[:, np.argsort(np.real(eigenvalue))[band]]
+        # vector = eigenvector[:, band]
         # print('vector',vector)
         vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(vector, precision=precision, index=index)  
-        # print('vector',vector)
+        print('vector',vector)
         # vector = self.find_vector_with_the_same_gauge(d_vector, vector)
         
         k = np.dot(k, self.model.structure.k_lat)
@@ -239,10 +229,10 @@ class Topology():
             dmt = self.model._make_dynamical_matrix(dk)
             d_eigenvalue, d_eigenvector = np.linalg.eigh(dmt)
             d_vector = d_eigenvector[:, np.argsort(np.real(d_eigenvalue))[band]]
+            # d_vector = d_eigenvector[:, band]
             d_vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(d_vector, precision=precision, index=index)
             # d_vector = self.find_vector_with_the_same_gauge(d_vector, vector)
-            # print('vector',vector)
-            # print('d_vector',d_vector)
+            # print('d_vector',d_vector[0])
             # print('d_vector-vector', d_vector-vector)
             A.append(1j * np.dot(vector.transpose().conj(), d_vector-vector)/delta)
         return A

@@ -5,10 +5,7 @@ properties
 """
 
 from topophonon.units import masses_dict
-from topophonon.utils import _direct_to_cartesian
-
 import numpy as np
-
 import os
 import re
 import warnings
@@ -25,7 +22,7 @@ class Structure():
                  lat: List[List[float]] = None,
                  coords: List[List[float]] = None,
                  masses: List[float] = None,
-                 atoms: List[str] = None, 
+                 atoms: List[str] = None,
                  shift: List[float] = [0.0, 0.0, 0.0]):
         """
         Parameters
@@ -64,7 +61,7 @@ class Structure():
             self.coords = coords
                 
             self.prm_dirc = np.array(coords,dtype=float)
-            self.prm_cart = _direct_to_cartesian(self.prm_dirc, self.lat)
+            self.prm_cart = self._direct_to_cartesian(self.prm_dirc, self.lat)
             
         if masses is None:
             self.masses = None
@@ -72,8 +69,11 @@ class Structure():
         self._set_atoms(atoms)
         if masses is not None:
             assert isinstance(masses, list), ("the masses must be given in a list")
+            if self.masses is not None:
+                warnings.warn("masses are already given, will be overwritten")
             self.masses = masses
         self.shift = np.array(shift)
+       
         
     def _atoms_to_masses(self,
                          atoms: List[str]):
@@ -116,6 +116,26 @@ class Structure():
         
         self.lat = lat
         self.k_lat = np.linalg.inv(np.dot(lat, lat.T))
+    
+    
+    @staticmethod    
+    def _direct_to_cartesian(coord: np.ndarray,
+                             lat: np.ndarray) -> np.ndarray :
+        """
+        convert a direct coordinate to a cartesian coordinate
+
+        """
+        return np.dot(coord, lat)
+        
+    
+    @staticmethod  
+    def _cartesian_to_direct(coord: np.ndarray,
+                             lat: np.ndarray) -> np.ndarray :
+        """
+        convert a cartesian coordinate to a direct coordinate
+
+        """
+        return np.dot(coord, np.linalg.inv(lat))
     
 
     def read_POSCAR(self, poscar: str):
@@ -168,7 +188,7 @@ class Structure():
                     coord_array = np.array([float(r) for r in coord_str])
                     self.prm_dirc.append(coord_array) 
                     self.prm_cart.append(
-                        _direct_to_cartesian(coord_array, self.lat))                      
+                        self._direct_to_cartesian(coord_array, self.lat))                      
                 self.prm_dirc = np.array(self.prm_dirc)
                 self.prm_cart = np.array(self.prm_cart)
             else:
@@ -193,7 +213,7 @@ class Structure():
         #convert the original coordinates to cartesian coordinates
         # org_coords_cart = []
         # for coord in self.prm_dirc:
-        #     org_coords_cart.append(_direct_to_cartesian(coord, self.lat))
+        #     org_coords_cart.append(self._direct_to_cartesian(coord, self.lat))
         # org_coords_cart = np.array(org_coords_cart)
             
         self.super_dirc, self.super_cart = [], []
@@ -226,7 +246,7 @@ class Structure():
                         coord = np.array([float(r) for r in coord_str])
                         self.super_dirc.append(coord)
                         self.super_cart.append(
-                            _direct_to_cartesian(coord, self.super_lat))
+                            self._direct_to_cartesian(coord, self.super_lat))
                     self.super_dirc = np.array(self.super_dirc)
                     self.super_cart = np.array(self.super_cart)
         except:
@@ -267,4 +287,4 @@ class Structure():
         lat = self.lat
         atoms, count = np.unique(self.atoms,return_counts=True)
         coords = self.prm_dirc
-        self._write_structure(file, lat, atoms, count, coords)   
+        self._write_structure(file, lat, atoms, count, coords)
