@@ -1014,19 +1014,20 @@ class Model(object):
         
         # delete atoms on the bottom and the top
         bot_bound = bottom_shift / multi
-        top_bound = top_shift / multi
-        bot_coord = min(model.structure.prm_dirc[:,fin_dirc])
+        top_bound = 1 - top_shift / multi
+        bot_coord = min(model.structure.prm_dirc[:,fin_dirc]) 
         top_coord = max(model.structure.prm_dirc[:,fin_dirc])
-        for i, coord in enumerate(model.structure.prm_dirc):
-            if coord[fin_dirc] - bot_coord < bot_bound:
-                model.bottom_del.add(i)
-                print("{} at the bottom is removed".format(model.structure.atoms[i]))
-            elif top_coord - coord[fin_dirc] < top_bound:
-                model.top_del.add(i)
-                print("{} at the top is removed".format(model.structure.atoms[i]))
-
-        #modify the force constants in the original model
-        #for each repeated cell 
+        
+        deleted_indices = set()
+        for i, coord in enumerate(structure.prm_dirc):
+            if coord[fin_dirc] < bot_bound or coord[fin_dirc] > top_bound:
+                deleted_indices.add(i)
+        old_to_new = {old: new for new, old in enumerate(
+                [i for i in range(len(structure.prm_dirc)) if i not in deleted_indices]
+            )
+        } 
+        print('removed atoms: ', deleted_indices)
+        # modify the force constants in the original model for each repeated cell 
         for c in range(multi):
             #for each force constant in the original model 
             for atom_1, atom_2, vec, vec_int, fc in self.fc:
@@ -1038,31 +1039,15 @@ class Model(object):
                 new_coord_2[fin_dirc] = (new_coord_2[fin_dirc] + c) / multi
                 new_coord_2_cart = np.dot(new_coord_2, model.structure.lat)
                 
-                # print(new_coord_1,new_coord_2)
-                # check if atom_2 is out of the boundary
                 if not bot_coord - 0.0001 < new_coord_2[fin_dirc] < top_coord + 0.0001:
                     continue
                 
-                # remove bottom and top atoms
-                # if atom_1 in model.bottom_del or atom_1 in model.top_del or\
-                # atom_2 in model.bottom_del or atom_2 in model.top_del:
-                #     continue
-                
-                #assign new indexes
-                                
-                # print(list(map(lambda x: np.linalg.norm(x-new_coord_1),model.structure.prm_dirc)))
-                # print('-----------------')
-                
                 atom_1, _ = model._atom_index(cart=new_coord_1_cart)
                 atom_2, _ = model._atom_index(cart=new_coord_2_cart)
-                # atom_1 = np.argmin(
-                #     list(map(lambda x: np.linalg.norm(x-new_coord_1),model.structure.prm_dirc))
-                # )
-                # atom_2 = np.argmin(
-                #     list(map(lambda x: np.linalg.norm(x-new_coord_2),model.structure.prm_dirc))
-                # )
-  
-                
+                                
+                if atom_1 in deleted_indices or atom_2 in deleted_indices:
+                    continue
+ 
                 new_vec = copy.deepcopy(vec)
                 new_vec[fin_dirc] = new_vec[fin_dirc] / multi
                 
@@ -1070,28 +1055,45 @@ class Model(object):
                 new_vec_int[fin_dirc] = 0.0
                 # if atom_1 == 11 and atom_2 == 1:
                 #     print(new_vec_int)
-                model.set_fc(int(atom_1), int(atom_2), new_vec, new_vec_int, fc)
-        
+                model.set_fc(int(old_to_new[atom_1]), int(old_to_new[atom_2]), new_vec, new_vec_int, fc)
+      
+        model.structure.del_atoms(deleted_indices)
         return model
-        #change the indexes and the lattice displacements in force constants
-    
+
     
     def correct_self_energy(self):
         new_fc = []
-        residues = {}
-        counts = {}
-        # calculate residue self-interactions
+        interactions = {}
         for atom_1, atom_2, vec, vec_int, fc in self.fc:
-            if atom_1 not in residues:
-                residues[atom_1] = copy.deepcopy(fc)
-                counts[atom_1] = 1
+            if atom_1 == atom_2 and np.linalg.norm(vec) < 1e-6:
+                continue
+            if atom_1 not in interactions:
+                interactions[atom_1] = copy.deepcopy(fc)
             else:
-                residues[atom_1] += fc
-                counts[atom_1] += 1
-        # average out residue interaction on each atom
-        for atom_1, atom_2, vec, vec_int, fc in self.fc:
-            fc -= residues[atom_1] / counts[atom_1]
-
+                interactions[atom_1] += fc
+            new_fc.append([atom_1, atom_2, vec, vec_int, fc])
+        for atom, interaction in interactions.items():
+            new_fc.append([
+                atom, atom, np.zeros(3), np.zeros(3), -interaction 
+            ])
+        self.fc = new_fc
+    
+    # def correct_self_energy(self):
+    #     new_fc = []
+    #     residues = {}
+    #     counts = {}
+    #     # calculate residue self-interactions
+    #     for atom_1, atom_2, vec, vec_int, fc in self.fc:
+    #         if atom_1 not in residues:
+    #             residues[atom_1] = copy.deepcopy(fc)
+    #             counts[atom_1] = 1
+    #         else:
+    #             residues[atom_1] += fc
+    #             counts[atom_1] += 1
+    #     # average out residue interaction on each atom
+    #     for atom_1, atom_2, vec, vec_int, fc in self.fc:
+    #         fc -= residues[atom_1] / counts[atom_1]
+    
     
     def _pixel_band(self,
                     k: np.ndarray,
@@ -1482,6 +1484,7 @@ class Model(object):
                 # count only if the band is in e_range
                 if not e_min <= omegajk[j] <= e_max:
                     continue
+                # print(omegajk[j])
                 njk[j] = 1 / (np.exp(omegajk[j] / KB / T) - 1)
                 factor = (njk[j] + 1/2) / omegajk[j]
                 fjq = 0 + 0j

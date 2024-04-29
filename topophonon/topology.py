@@ -12,6 +12,7 @@ import warnings
 import matplotlib.pyplot as plt
 import functools
 from copy import deepcopy
+from scipy.optimize import basinhopping, minimize
 
 class Topology():
     """
@@ -119,26 +120,32 @@ class Topology():
         -------
         an array of eigenvectors on the circle
         """
-
+        
+        kpts = []
         wfs = []
         for i in range(k_num):
             theta = 2 * np.pi * i / k_num
             x = center[0] + r * np.cos(theta)
             y = center[1] + r * np.sin(theta)
+            
             if self.dim == 2:
-                wfs.append(self._wfs_at_kpt(np.array([x,y])))
+                kpt = np.array([x,y,0])
             else:
                 if dirc == 0:
-                    wfs.append(self._wfs_at_kpt(np.array([z,x,y])))
+                    kpt = np.array([z,x,y])
                 elif dirc == 1:
-                    wfs.append(self._wfs_at_kpt(np.array([y,z,x])))
+                    kpt = np.array([y,z,x])
                 elif dirc == 2:
-                    wfs.append(self._wfs_at_kpt(np.array([x,y,z])))
+                    kpt = np.array([x,y,z])
                 else:
                     raise Exception("dirc must be 0, 1 or 2 if dim of the model is 3")
+            # kpt = np.dot(kpt, np.linalg.inv(self.model.structure.k_lat))
+            kpts.append(kpt)      
+            wfs.append(self._wfs_at_kpt(kpt))
         # make sure the last wf is equal to the first one
+        kpts.append(kpts[0])
         wfs.append(wfs[0])
-        return np.array(wfs)
+        return np.array(kpts), np.array(wfs)
     
     
     def _gen_orbit_wfs(self, center, r, theta, dirc, k_num=60):
@@ -163,60 +170,54 @@ class Topology():
             wfs.append(self._wfs_at_kpt(kpt))
         return np.array(wfs)
     
-    @staticmethod
-    def find_vector_with_the_same_gauge(vector_1, vector_0):
-        phase_1_pre = 0
-        phase_2_pre = 3.14
-        n_test = 100000
-        for i0 in range(n_test):
-            test_1 = np.sum(np.abs(vector_1*np.exp(1j*phase_1_pre) - vector_0))
-            test_2 = np.sum(np.abs(vector_1*np.exp(1j*phase_2_pre) - vector_0))
-            if test_1 < 1e-7:
-                phase = phase_1_pre
-                # print('Done with i0=', i0)
-                break
-            if i0 == n_test-1:
-                phase = phase_1_pre
-                print('Gauge Not Found with i0=', i0)
-            if test_1 < test_2:
-                if i0 == 0:
-                    phase_1 = phase_1_pre-(phase_2_pre-phase_1_pre)/2
-                    phase_2 = phase_1_pre+(phase_2_pre-phase_1_pre)/2
-                else:
-                    phase_1 = phase_1_pre
-                    phase_2 = phase_1_pre+(phase_2_pre-phase_1_pre)/2
-            else:
-                if i0 == 0:
-                    phase_1 = phase_2_pre-(phase_2_pre-phase_1_pre)/2
-                    phase_2 = phase_2_pre+(phase_2_pre-phase_1_pre)/2
-                else:
-                    phase_1 = phase_2_pre-(phase_2_pre-phase_1_pre)/2
-                    phase_2 = phase_2_pre 
-            phase_1_pre = phase_1
-            phase_2_pre = phase_2
-        vector_1 = vector_1*np.exp(1j*phase) 
-        return vector_1
-
 
     @staticmethod
     def find_vector_with_fixed_gauge_by_making_one_component_real(vector, precision=0.001, index=None):
+        # print(np.abs(vector))
         vector = np.array(vector)
         if index == None:
             index = np.argmax(np.abs(vector))
-        # print(index)
+            print('index: ', index)
         angle = np.angle(vector[index])
         vector = vector*np.exp(-1j*angle)
         return vector 
+    
+    
+    @staticmethod
+    def find_vector_with_fixed_gauge_by_minimizing_real_part(vector, index):
+        def func(theta):
+            res = np.cos(theta) * vector.real - np.sin(theta) * vector.imag
+            return np.linalg.norm(res)
+        
+        min_real = float('inf')
+        # minimizer_kwargs = dict(method="L-BFGS-B", bounds=[(0, 2*np.pi)], tol=1e-12)
+        for start_point in np.arange(0, 2*3.14, 0.5):
+            # argmin_theta = basinhopping(func, start_point, minimizer_kwargs=minimizer_kwargs, stepwise_factor=0.1).x[0]
+            argmin_theta = minimize(func, start_point, method='COBYLA' , bounds=[(0, 2*np.pi)], tol=1e-30, options={'maxiter':100}).x[0]
+            # print(argmin_theta, func(argmin_theta))
+            if func(argmin_theta) < min_real:
+                globalmin_theta = argmin_theta
+                min_real = func(argmin_theta)
+        # print(min_real)
+        
+        vector = vector * np.exp(1j * globalmin_theta)
+        # set one component positive
+        if vector[index].real < 0:
+            vector *= -1
+        return vector
+        
 
-
-    def connection(self, k, band, delta=1e-9, precision=0.0001, index=None):
+    def connection(self, k, band, index=None, delta=1e-9, precision=0.0001):
+        # print(k)
         dy_mt = self.model._make_dynamical_matrix(k)
         eigenvalue, eigenvector = np.linalg.eigh(dy_mt)
         vector = eigenvector[:, np.argsort(np.real(eigenvalue))[band]]
         # vector = eigenvector[:, band]
+        # print('vector_org',vector)
+        print(abs(vector))
+        vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(vector, index=index)
+        # vector = self.find_vector_with_fixed_gauge_by_minimizing_real_part(vector, index)  
         # print('vector',vector)
-        vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(vector, precision=precision, index=index)  
-        print('vector',vector)
         # vector = self.find_vector_with_the_same_gauge(d_vector, vector)
         
         k = np.dot(k, self.model.structure.k_lat)
@@ -230,12 +231,20 @@ class Topology():
             d_eigenvalue, d_eigenvector = np.linalg.eigh(dmt)
             d_vector = d_eigenvector[:, np.argsort(np.real(d_eigenvalue))[band]]
             # d_vector = d_eigenvector[:, band]
-            d_vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(d_vector, precision=precision, index=index)
+            # print('d_vector_org',d_vector)
+            d_vector = self.find_vector_with_fixed_gauge_by_making_one_component_real(d_vector, index=index)
+            # d_vector = self.find_vector_with_fixed_gauge_by_minimizing_real_part(d_vector, index)
             # d_vector = self.find_vector_with_the_same_gauge(d_vector, vector)
-            # print('d_vector',d_vector[0])
+            # print('d_vector',d_vector)
             # print('d_vector-vector', d_vector-vector)
+            # if d == 0:
+                # print('d_vector', d_vector)
+                # print('d_vector-vector', d_vector-vector)
             A.append(1j * np.dot(vector.transpose().conj(), d_vector-vector)/delta)
+            # print(' ')
+        # print('---------------')
         return A
+    
 
     @staticmethod
     def wilson_loop(band_indices, all_wfs,):
@@ -254,7 +263,7 @@ class Topology():
         -------
         berry phase calculated with wilson loop method
         """
-
+        
         if isinstance(band_indices, int):
             band_indices = [band_indices]
         num_bands = len(band_indices)

@@ -10,6 +10,7 @@ import os
 import re
 import warnings
 from typing import List
+from copy import deepcopy
 
 class Structure():
     
@@ -74,7 +75,7 @@ class Structure():
             self.masses = masses
         self.shift = np.array(shift)
        
-        
+     
     def _atoms_to_masses(self,
                          atoms: List[str]):
         """
@@ -137,6 +138,13 @@ class Structure():
         """
         return np.dot(coord, np.linalg.inv(lat))
     
+    
+    def del_atoms(self, indices):
+        self.masses = [x for i, x in enumerate(self.masses) if i not in indices]
+        self.atoms = [x for i, x in enumerate(self.atoms) if i not in indices]
+        self.prm_cart = deepcopy(self.prm_cart[[i for i in range(len(self.prm_cart)) if i not in indices]])
+        self.prm_dirc = deepcopy(self.prm_dirc[[i for i in range(len(self.prm_dirc)) if i not in indices]])
+        
 
     def read_POSCAR(self, poscar: str):
         """
