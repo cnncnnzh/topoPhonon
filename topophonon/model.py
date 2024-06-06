@@ -420,17 +420,20 @@ class Model(object):
         k_path_temp = []
         # set the non-periodic direction to be zero
         for node in k_path:
-            pointer = 0
-            temp_k = []
-            for j in range(self.dim):
-                if j in self.fin_dirc:
-                    temp_k.append(0)
-                else:
-                    temp_k.append(node[pointer])
-                    pointer += 1
+            if len(node) < self.dim:
+                pointer = 0
+                temp_k = []
+                for j in range(self.dim):
+                    if j in self.fin_dirc:
+                        temp_k.append(0)
+                    else:
+                        temp_k.append(node[pointer])
+                        pointer += 1
+            else:
+                temp_k = node
             k_path_temp.append(np.array(temp_k))
+                
         k_path = np.array(k_path_temp)
-        
         # find the length between two nodes
         node_dist = [0]
         for i in range(1, n_nodes):
@@ -667,7 +670,7 @@ class Model(object):
 
 
     def _convert_unit(self,
-                      unit: Union[str, int]
+                      unit: Union[str, float]
                       ) -> float:
         """
         Convert the unit if using VASP interface
@@ -678,7 +681,7 @@ class Model(object):
             # if given a string, convert only if using vasp outputs
             unit_vasp = VASP2THZ * unit_dict[unit.lower()]
             return unit_vasp if self.VASPcal else 1
-        elif isinstance(unit, int):
+        elif isinstance(unit, float):
             return unit
         else:
             raise Exception("invalid unit specified")
@@ -1036,7 +1039,7 @@ class Model(object):
                 new_coord_1_cart = np.dot(new_coord_1, model.structure.lat)
                 
                 new_coord_2 =  copy.deepcopy(self.structure.prm_dirc[atom_1]) + vec
-                new_coord_2[fin_dirc] = (new_coord_2[fin_dirc] + c) / multi
+                new_coord_2[fin_dirc] = (new_coord_2[fin_dirc] + c) / multi 
                 new_coord_2_cart = np.dot(new_coord_2, model.structure.lat)
                 
                 if not bot_coord - 0.0001 < new_coord_2[fin_dirc] < top_coord + 0.0001:
