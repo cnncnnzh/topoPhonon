@@ -420,9 +420,9 @@ class Model(object):
         k_path_temp = []
         # set the non-periodic direction to be zero
         for node in k_path:
+            pointer = 0
+            temp_k = []
             if len(node) < self.dim:
-                pointer = 0
-                temp_k = []
                 for j in range(self.dim):
                     if j in self.fin_dirc:
                         temp_k.append(0)
@@ -432,8 +432,8 @@ class Model(object):
             else:
                 temp_k = node
             k_path_temp.append(np.array(temp_k))
-                
         k_path = np.array(k_path_temp)
+        
         # find the length between two nodes
         node_dist = [0]
         for i in range(1, n_nodes):
@@ -598,7 +598,7 @@ class Model(object):
         elif len(colors) == 3:
             #exaggerate the contribution from the edge
             if margin_highlight != [0.,0.]:
-                factor = 2.5
+                factor = 3
                 diff_1 = min(colors[0]*factor, 1.0) - colors[0]
                 diff_2 = min(colors[1]*factor, 1.0) - colors[1]
                 return tuple([min(colors[0]*factor, 1.0), 
@@ -1039,7 +1039,7 @@ class Model(object):
                 new_coord_1_cart = np.dot(new_coord_1, model.structure.lat)
                 
                 new_coord_2 =  copy.deepcopy(self.structure.prm_dirc[atom_1]) + vec
-                new_coord_2[fin_dirc] = (new_coord_2[fin_dirc] + c) / multi 
+                new_coord_2[fin_dirc] = (new_coord_2[fin_dirc] + c) / multi
                 new_coord_2_cart = np.dot(new_coord_2, model.structure.lat)
                 
                 if not bot_coord - 0.0001 < new_coord_2[fin_dirc] < top_coord + 0.0001:
@@ -1056,8 +1056,6 @@ class Model(object):
                 
                 new_vec_int = copy.deepcopy(vec_int)
                 new_vec_int[fin_dirc] = 0.0
-                # if atom_1 == 11 and atom_2 == 1:
-                #     print(new_vec_int)
                 model.set_fc(int(old_to_new[atom_1]), int(old_to_new[atom_2]), new_vec, new_vec_int, fc)
       
         model.structure.del_atoms(deleted_indices)
@@ -1141,7 +1139,7 @@ class Model(object):
                   node_names: Union[List[str], None] = None,
                   k_num: int = 100,
                   fin_dirc: Union[int, None] = None,
-                  sigma: float = 2.0,
+                  sigma: float = 3,
                   unit: Union[str, float] = "thz"):
         """
         plot edge/surface states, smear the bulk bands with gaussian
