@@ -35,6 +35,7 @@ masses_dict = {'H' : 1.008,'HE' : 4.003, 'LI' : 6.941, 'BE' : 9.012,\
                 'NH' : 284, 'FL' : 289, 'MC' : 288, 'LV' : 292, 'TS' : 294,\
                 'OG' : 294}
 
+# convert VASP default frequency unit to THz
 VASP2THZ = 15.633302
 
 unit_dict = {"thz" : 1,
