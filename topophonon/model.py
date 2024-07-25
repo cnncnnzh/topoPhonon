@@ -1517,7 +1517,7 @@ class Model(object):
         From ab2tds
         """ 
         
-        HB = HBARCGS * 10 ** 16  # cm^2gs-1 to A^2gs-1
+        HB = HBARCGS * 10 ** 16  # convert from cm^2gs-1 to A^2gs-1
         
         nb_atom = len(self.structure.atoms)
         nb_band = nb_atom * self.dim
