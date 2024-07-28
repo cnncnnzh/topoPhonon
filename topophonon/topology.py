@@ -30,7 +30,7 @@ class Topology():
 
     def _wfs_at_kpt(self, kpt):
         """
-        Return the modified the phonon eigenvectors at kpt 
+        Return the modified phonon eigenvectors at kpt 
         """
         modified_wf = []
         dy_mt, all_freqs, eig_vecs =\
