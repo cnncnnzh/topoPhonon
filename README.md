@@ -11,7 +11,7 @@
 
 ## Basic usage:  
 
-Use one line of code to build tight-binding model:  
+Use one line of code to build a tight-binding model:  
 `model = read_from_files(path)`  
 where the path should contain POSCAR, SPOSCAR and FORCE_CONSTANTS files.   
 
