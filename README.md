@@ -23,10 +23,10 @@ Create a Topology object:
 `tp = Topology(model)`  
 Plot the energy surfaces of `band1` and `band2` and find the degenerate points on z=0 plane:  
 `model.plot_3d_band([band1, band2], center, xy_range)`  
-Then plot wannier charge center evolution around `center` for `band_indices`:  
+Then plot Wannier charge center evolution around `center` for `band_indices`:  
 `tp.wcc_evol_sphere(band_indices, center)`  
-and the berry curvature distribution on $k_i$=`kz` plane, where $k_i$ = $k_z, k_y, k_z$ if `dirc` = 0, 1, 2, respectively:  
-`tp.berry_curvature_proj(band_indices, dirc, kz)`  
+and the Berry curvature distribution on $k_i$=`kz` plane, where $k_i$ = $k_z, k_y, k_z$ if `dirc` = 0, 1, 2, respectively:  
+`tp.Berry_curvature_proj(band_indices, dirc, kz)`  
 
 
 #### More examples can be found in runExamples.py file
