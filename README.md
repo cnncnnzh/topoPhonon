@@ -29,4 +29,4 @@ and the Berry curvature distribution on $k_i$=`kz` plane, where $k_i$ = $k_z, k_
 `tp.Berry_curvature_proj(band_indices, dirc, kz)`  
 
 
-#### More examples can be found in runExamples.py file
+#### More examples can be found in topophonon/runExamples.py file
