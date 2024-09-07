@@ -13,7 +13,7 @@ setuptools.setup(
         "tqdm>=4.64.1",
         "scipy>=1.6.2"
     ],
-    author="He Zhu",
+    author="He (Alan) Zhu",
     author_email="zhu00336@umn.edu",
     description=" topoPhonon package is a python package that allows users to" 
     "phononic calculate topological properties, by building phonon tight-binding"
