@@ -173,6 +173,7 @@ class Topology():
 
     @staticmethod
     def find_vector_with_fixed_gauge_by_making_one_component_real(vector, precision=0.001, index=None):
+        # find the gauge for continous berry connections
         # print(np.abs(vector))
         vector = np.array(vector)
         if index == None:
