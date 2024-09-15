@@ -186,6 +186,7 @@ class Topology():
     
     @staticmethod
     def find_vector_with_fixed_gauge_by_minimizing_real_part(vector, index):
+        # find the gauge for continous berry connections
         def func(theta):
             res = np.cos(theta) * vector.real - np.sin(theta) * vector.imag
             return np.linalg.norm(res)
