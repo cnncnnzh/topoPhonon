@@ -16,7 +16,7 @@ from scipy.optimize import basinhopping, minimize
 
 class Topology():
     """
-    Class that contains topology-related properties and methods  
+    Class with topology-related properties and methods  
     """
     
     
