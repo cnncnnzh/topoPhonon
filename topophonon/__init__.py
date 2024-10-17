@@ -11,4 +11,4 @@ import topophonon.structure
 import topophonon.model
 import topophonon.topology 
 
-__all__ = ['structure', 'model', 'topology','masses']
+__all__ = ['structure', 'model', 'topology', 'masses']
