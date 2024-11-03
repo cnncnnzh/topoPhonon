@@ -170,7 +170,7 @@ class Model(object):
                          ) -> (int, int, np.ndarray): 
         """
         express the vector of a pair in the unit of primitive lattice.
-        the atoms are specified by their indexes in the supercell.
+        the atoms are specified by their indices in the supercell.
     
         """
         i_1, lat_disp_1 = self._atom_index(atom=atom_1)
