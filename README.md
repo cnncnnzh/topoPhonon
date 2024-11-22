@@ -1,7 +1,7 @@
 # topoPhonon
 #### topoPhonon is a python package that allows users to phononic calculate topological properties, by building phonon tight-binding model.
 * Build tight-binding models from user's input, FORCE_CONSTANTS files or Phonopy API. The last method is much faster, but need to import Phonopy package and manually create phonopy.harmonic.dynamical_matrix.DynamicalMatrix object.  
-* Calculate berry phase, berry curvature, wannier charge center evolution around Weyl points from tight-binding model.  
+* Calculate berry phase, berry curvature, wannier charge center evolution around Weyl points from tight-binding models.  
 * Build slab/ribbon models for surface/edge.  
 * Plot 3d band surfaces.   
 
