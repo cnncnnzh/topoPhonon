@@ -210,6 +210,9 @@ class Topology():
         
 
     def connection(self, k, band, index=None, delta=1e-9, precision=0.0001):
+        """
+        Calculate Berry Connection
+        """
         # print(k)
         dy_mt = self.model._make_dynamical_matrix(k)
         eigenvalue, eigenvector = np.linalg.eigh(dy_mt)
